@@ -28,6 +28,7 @@ def makeBucketMapFromSysArgvOrLocalEnv(prefix = ""):
     args = sys.argv[1:]
     if len(args) == 0:
         print "Looking for bucket args in module localenv ..."
+        # For this to work, you need to define a localenv module that includes the required data ...
         import localenv.s3
         accessKey = localenv.s3.accessKey
         secretAccessKey = localenv.s3.secretAccessKey
