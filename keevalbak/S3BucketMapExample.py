@@ -38,17 +38,27 @@ def makeBucketMapFromSysArgvOrLocalEnv(prefix = ""):
     else:
         accessKey, secretAccessKey, bucketName = args[0], args[1], args[2]
     return S3BucketMap(accessKey, secretAccessKey, bucketName, prefix)
+
+
+reallyLongKey = "abcdefghijklmnopqrstuvwxyz" * 30
     
 def main():
     bucketMap = makeBucketMapFromSysArgvOrLocalEnv("testPrefix/")
     print "%s" % bucketMap
     bucketMap["testValue"] = "fred"
+    subBucketMap = bucketMap.subMap("test")
+    print "subBucketMap[Value] = %s" % subBucketMap["Value"]
+    
     del bucketMap["junkvalue"]
     print "testValue = %r" % bucketMap["testValue"]
     del bucketMap["testValue"]
     #print "testValue = %r" % bucketMap["testValue"]
     bucketMap["testValue"] = "fred2"
     bucketMap["testValue2"] = "jim"
+    
+    bucketMap[reallyLongKey] = "really long key value"
+    
+    print "bucketMap[reallyLongKey] (key-length %d bytes) = %r" % (len(reallyLongKey), bucketMap[reallyLongKey])
     
     print "testValue = %r" % bucketMap["testValue"]
 

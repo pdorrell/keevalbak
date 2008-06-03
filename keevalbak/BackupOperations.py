@@ -187,6 +187,9 @@ class BackupRecord:
         
     def toYamlData(self):
         return {"type": self.type, "datetime": self.datetime}
+    
+    def isFull(self):
+        return self.type == "full"
         
     def __str__(self):
         return "[Backup: %s %s]" % (self.type, self.datetime)
@@ -308,6 +311,7 @@ class ContentKey(object):
         
     def fileKey(self):
         return self.datetime + "/files" + self.filePath
+
             
 class IncrementalBackups:
     def __init__(self, backupMap):
@@ -322,6 +326,59 @@ class IncrementalBackups:
         else:
             backupsListYamlData = []
         return [BackupRecord.fromYamlData(record) for record in backupsListYamlData]
+    
+    def getBackupGroups(self):
+        backupGroups = []
+        records = self.getBackupRecords()
+        currentBackupGroup = []
+        for i, record in enumerate(records):
+            if record.isFull() or i == 0:
+                currentBackupGroup = [record]
+                backupGroups.append (currentBackupGroup)
+            else:
+                currentBackupGroup.append(record)
+        return backupGroups
+    
+    def listBackups(self):
+        recordGroups = self.getBackupGroups()
+        for recordGroup in recordGroups:
+            for i, record in enumerate(recordGroup):
+                if i == 0:
+                    indent = "*"
+                else:
+                    indent = "   "
+                print "%s%s: %s" % (indent, record.type, record.datetime)
+                
+    def pruneBackup(self, backupRecord, dryRun):
+        print "  prune backup %r" % backupRecord
+        backupSubMap = self.backupMap.subMap(backupRecord.datetime)
+        deleteMapValues(backupSubMap, dryRun)
+                
+    def pruneBackupGroup(self, recordGroup, dryRun):
+        print "Backup group to prune: %r" % recordGroup
+        for record in recordGroup:
+            self.pruneBackup(record, dryRun)
+                
+    def pruneBackups(self, keep = 1, dryRun = True):
+        print "Pruning backups, keep %d%s" % (keep, dryRun and ", DRY RUN" or "")
+        if keep < 1:
+            raise Exception ("Number of full backups to keep must be at least 1")
+        recordGroups = self.getBackupGroups()
+        if keep >= len(recordGroups):
+            print "Only %d full backups, and %d specified to keep, so none will be pruned" % (len(recordGroups), keep)
+        else:
+            numToPrune = len(recordGroups) - keep
+            groupsToPrune = recordGroups[:numToPrune]
+            for recordGroup in groupsToPrune:
+                self.pruneBackupGroup(recordGroup, dryRun = dryRun)
+            if not dryRun:
+                remainingGroups = recordGroups[numToPrune:]
+                remainingRecords = []
+                for group in remainingGroups:
+                    remainingRecords += group
+                print "remainingRecords = %r" % remainingRecords
+                backupRecordsYamlData = [record.toYamlData() for record in remainingRecords]
+                self.backupMap["backupRecords"] = yaml.dump(backupRecordsYamlData)
         
     def doBackup(self, directoryInfo, full = True):
         dateTimeString = self.getDateTimeString()
@@ -426,6 +483,12 @@ class IncrementalBackups:
         self.restoreDirectory (restoreDir, pathSummaryListToRestore, hashContentKeyMap, overwrite)
         print "Restored data to %s" % restoreDir
         
+def listBackups(backupMap):
+    IncrementalBackups(backupMap).listBackups()
+        
+def pruneBackups(backupMap, keep = 1, dryRun = True):
+    IncrementalBackups(backupMap).pruneBackups(keep = keep, dryRun = dryRun)
+
 def doBackup(sourceDirectory, backupMap, testRestoreDir = None, full = False, verify = False, 
              doTheBackup = True):
     startTime = datetime.datetime.now()
