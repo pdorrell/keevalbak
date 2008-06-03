@@ -22,22 +22,16 @@ from boto.s3.connection import S3Connection
 from boto.s3.bucketlistresultset import BucketListResultSet
 from boto.s3.key import Key
 
-class S3BucketMap(object):
-    """Simplest possible implementation of Python map methods using an Amazon S3 bucket, 
-    and optionally a key.
-    
-    For example, with a bucket name "bucket1" and prefix "myprefix", the key "mykey" is represented
-    by the key "myprefixmykey" in bucket "bucket1".
-    
-    The implementation only stores values which are byte strings.
-    """
-    
-    def __init__(self, accessKey, secretAccessKey, bucketName, prefix = "", secure = True):
-        """Initialize using standard S3 bucket details and optional prefix"""
-        self.s3Connection = S3Connection(accessKey, secretAccessKey, secure)
+
+class BaseS3BucketMap(object):
+    def __init__(self, s3Connection, bucketName, prefix = ""):
+        self.s3Connection = s3Connection
         self.bucket = self.s3Connection.get_bucket(bucketName)
         self.bucketName = bucketName
         self.prefix = prefix
+        
+    def subMap(self, prefix):
+        return BaseS3BucketMap(self.s3Connection, self.bucketName, self.prefix + prefix)
         
     def __getitem__(self, key):
         valueKey = self.bucket.lookup(self.prefix + key)
@@ -71,3 +65,18 @@ class S3BucketMap(object):
 
     def __str__(self):
         return self.__repr__()
+
+class S3BucketMap(BaseS3BucketMap):
+    """Simplest possible implementation of Python map methods using an Amazon S3 bucket, 
+    and optionally a key.
+    
+    For example, with a bucket name "bucket1" and prefix "myprefix", the key "mykey" is represented
+    by the key "myprefixmykey" in bucket "bucket1".
+    
+    The implementation only stores values which are byte strings.
+    """
+    
+    def __init__(self, accessKey, secretAccessKey, bucketName, prefix = "", secure = True):
+        """Initialize using standard S3 bucket details and optional prefix"""
+        s3Connection = S3Connection(accessKey, secretAccessKey, secure)
+        super(S3BucketMap, self).__init__(s3Connection, bucketName, prefix)
