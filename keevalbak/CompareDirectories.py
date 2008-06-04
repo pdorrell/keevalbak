@@ -22,12 +22,15 @@ import os, sys
 
 class DirectoryComparator:
     def __init__(self, base1, base2, log, logDiff):
+        """An intention to compare all files within two base directories, 
+        with specified logger (for progress messages) and difference logger"""
         self.base1 = base1
         self.base2 = base2
         self.log = log
         self.logDiff = logDiff
 
     def compareDirs(self, subPath = None, indent = 0):
+        """Recursively compared the specified sub-directory in each base directory"""
         dir1 = subPath and os.path.join(self.base1, subPath) or self.base1
         dir2 = subPath and os.path.join(self.base2, subPath) or self.base2
         self.log(indent, "comparing directories %s and %s ..." % (dir1, dir2))
@@ -78,6 +81,7 @@ class DirectoryComparator:
                     self.logDiff("Unknown object %s in %s" % (childSubPath, self.base2))
                     
     def compareFiles(self, indent, subPath):
+        """Compare the specified file within each base directory"""
         file1 = os.path.join(self.base1, subPath)
         file2 = os.path.join(self.base2, subPath)
         self.log(indent, "comparing files %s and %s ..." % (file1, file2))
@@ -87,16 +91,24 @@ class DirectoryComparator:
             self.logDiff("File %s has different contents in %s and %s" % (subPath, self.base1, self.base2))
             
 def printLog(indent, message):
+    """Simple implementation for progress logger"""
     print ("  " * indent) + message
     
 class ErrorDiff:
+    """Logger for comparison differences"""
     def __init__(self):
         self.errors = []
     def __call__(self, message):
+        """Print error message when a difference is found.
+        Also accumulate the errors, so you can check at the end
+        if there were any."""
         print "##ERROR: %s" % message
         self.errors.append (message)
 
 def verifyIdentical(dir1, dir2):
+    """Verify two directories have identical sub-directories and file contents.
+    Raise an error if there is a difference.
+    Note: any meta-data such as protections or create/modified dates are currently ignored."""
     errorDiff = ErrorDiff()
     comparison = DirectoryComparator(dir1, dir2, 
                                      log = printLog, logDiff = errorDiff)
@@ -109,6 +121,7 @@ def verifyIdentical(dir1, dir2):
                                                               ", ".join(errorDiff.errors))
 
 def main():
+    """Compare two directories passed in as arguments"""
     args = sys.argv[1:]
     if len(args) != 2:
         raise Exception("Useage: %s dir1 dir2" % sys.argv[0])

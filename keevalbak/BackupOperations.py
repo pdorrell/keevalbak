@@ -29,17 +29,20 @@ import re
 from sets import Set
 
 def readFileBytes(filename):
+    """Read named file and return contents as a byte string"""
     f = file(filename, "rb")
     bytes = f.read()
     f.close()
     return bytes
 
 def writeFileBytes(filename, bytes):
+    """Write byte string as new contents of named file"""
     f = file(filename, "wb")
     f.write(bytes)
     f.close()
 
 def deleteMapValues(map, dryRun):
+    """Delete all keys from a map, or if dryRun is True, do a dry run"""
     print "%sDeleting keys from map %s" % (dryRun and "DRYRUN: " or "", map)
     for key in map:
         print " delete %r ..." % key
@@ -48,10 +51,13 @@ def deleteMapValues(map, dryRun):
     print "finished."
     
 class PathSummary(object):
+    """Information about a file or directory specified as a relative path within some base directory
+    Note: all paths are '/' separated, whether or not we are in Microsoft Windows"""
     def __init__(self, relativePath):
         self.relativePath = relativePath
 
     def fullPath(self, basePath):
+        """Return the full path given the path of the base directory"""
         return basePath + self.relativePath
 
     def __repr__(self):
@@ -59,6 +65,7 @@ class PathSummary(object):
     
     @staticmethod
     def fromYamlData(data):
+        """Convert YAML data into FileSummary or DirSummary (inverse of toYamlData methods)"""
         pathType = data["type"]
         if pathType == "file":
             return FileSummary.fromYamlData(data)
@@ -68,6 +75,8 @@ class PathSummary(object):
             raise "Unknown path type: %s" % pathType
 
 class FileSummary(PathSummary):
+    """Information about a file specified as a relative path within some (unspecified) base directory, 
+    including a SHA1 hash of the file's contents."""
     def __init__(self, relativePath, hash, written = False):
         super(FileSummary, self).__init__(relativePath)
         self.isDir = False
@@ -79,6 +88,7 @@ class FileSummary(PathSummary):
         return "FILE: %s : %s%s" % (self.relativePath, self.hash, self.written and " W" or "")
         
     def toYamlData(self):
+        """Convert to YAML"""
         return {"type": "file", 
                 "path": self.relativePath, 
                 "hash": self.hash, 
@@ -87,9 +97,11 @@ class FileSummary(PathSummary):
     
     @staticmethod
     def fromYamlData(data):
+        """Create from YAML (inverse of toYamlData)"""
         return FileSummary(data["path"], data["hash"], written = data["written"])
 
 class DirSummary(PathSummary):
+    """Information about a file specified as a relative path within some (unspecified) base directory"""
     def __init__(self, relativePath):
         super(DirSummary, self).__init__(relativePath)
         self.isDir = True
@@ -99,55 +111,74 @@ class DirSummary(PathSummary):
         return "DIR:  %s" % (self.relativePath)
         
     def toYamlData(self):
+        """Convert to YAML"""
         return {"type": "dir", 
                 "path": self.relativePath
                 }
     
     @staticmethod
     def fromYamlData(data):
+        """Create from YAML (inverse of toYamlData)"""
         return DirSummary(data["path"])
 
 class DirectoryInfo:
+    """Information about all the directories and files within a base directory
+       All directories are listed before any subdirectories or files contained within them.
+    """
     def __init__(self, path):
+        """Construct from path base directory"""
         self.path = path
         self.pathSummaries = []
         self.summarizeSubDir("")
         
-    def getDirSummary(self, relativePath):
+    def createDirSummary(self, relativePath):
+        """Create a path summary for a sub-directory"""
         return DirSummary (relativePath)
     
-    def getFileSummary(self, relativePath):
+    def createFileSummary(self, relativePath):
+        """Create a path summary for a file in the base directory"""
         fileName = self.path + relativePath
         content = readFileBytes(fileName)
         sha1Hash = hashlib.sha1(content).hexdigest()
         return FileSummary (relativePath, sha1Hash)
     
     def addSummary(self, pathSummary):
+        """Add a path summary"""
         print pathSummary
         self.pathSummaries.append (pathSummary)
         
     def getPathSummariesYamlData(self):
+        """Return array of path summaries as YAML data"""
         return [summary.toYamlData() for summary in self.pathSummaries]
     
     def summarizeSubDir(self, relativePath):
+        """Recursively summarize a sub-directory specified by it's relative path, 
+        adding the path summaries for all contained files and sub-directories to the list of path summaries."""
         for childName in os.listdir(self.path + relativePath):
             childRelativePath = relativePath + "/" + childName;
             childPath = self.path + childRelativePath
             if os.path.isfile(childPath):
-                self.addSummary(self.getFileSummary(childRelativePath))
+                self.addSummary(self.createFileSummary(childRelativePath))
             elif os.path.isdir(childPath):
-                self.addSummary(self.getDirSummary(childRelativePath))
+                self.addSummary(self.createDirSummary(childRelativePath))
                 self.summarizeSubDir (childRelativePath)
             else:
                 print "UNKNOWN OBJECT %s in %s" % (childName, self.path + relativePath)
                 
 class HashVerificationRecords(object):
+    """Records of verified hashes of backed up files (i.e. verified by actually reading
+    the file content out of the backup map and recalculating the hash).
+    Note that this class is not yet used, and nothing is yet writing the verification records
+    into the backup map."""
+    
     def __init__(self, backupMap):
         self.backupMap = backupMap
         self.datetimeFileHashesMap = {}
         self.datetimeUpdated = Set()
         
     def getWrittenFileHash(self, datetime, filePath):
+        """Get the hash of a backed up file, either from an existing hash verification record, 
+        or, read the file contents from the backup map and calculate the hash."""
         if datetime not in self.datetimeFileHashesMap:
             self.datetimeFileHashesMap[datetime] = {}
         fileHashesMap = self.datetimeFileHashesMap[datetime]
@@ -170,6 +201,7 @@ class HashVerificationRecords(object):
             return fileHash
         
     def updateVerificationRecords(self):
+        """Update any newly verified hashes back into the backup map."""
         for datetime in self.datetimeUpdated:
             fileHashesRecordFilename = datetime + "/fileHashes.yaml"
             print "Updating verification records for %s = %s" % (datetime, 
@@ -177,15 +209,19 @@ class HashVerificationRecords(object):
             self.backupMap[fileHashesRecordFilename] = yaml.dump (self.datetimeFileHashesMap[datetime])
             
 class BackupRecord:
+    """A record of a backup made: it's date/time, and whether it was full or incremental."""
     def __init__(self, type, datetime):
+        """construct from 'full' or 'incremental' and the date time"""
         self.type = type
         self.datetime = datetime
         
     @staticmethod
     def fromYamlData(data):
+        """Construct backup record from YAML data (inverse of toYamlData)"""
         return BackupRecord(data["type"], data["datetime"])
         
     def toYamlData(self):
+        """Convert to data to be stored in YAML"""
         return {"type": self.type, "datetime": self.datetime}
     
     def isFull(self):
@@ -198,20 +234,27 @@ class BackupRecord:
         return self.__str__()
     
 class WrittenRecords:
+    """Records of where file contents with a given SHA1 hash value was written to in backup map
+    (within the context of a particular set of backups, i.e. a full and following incrementals)"""
     def __init__(self):
         self.written = {}
         
     def recordHashWritten(self, hash, key):
+        """Record that a contents with a particular hash were written to a particular key"""
         print " record hash %s written to %s" % (hash, key)
         self.written[hash] = key
         
     def isWritten(self, hash):
+        """Has a file contents with this hash value been written to the backup map?"""
         return hash in self.written
     
     def locationWritten(self, hash):
+        """Where a file contents with this hash value was written to"""
         return self.written[hash]
     
     def recordBackup(self, backupMap, backupRecord):
+        """For every file contents in a backup record recorded as written, record it's
+        hash value and backup map key in the written records."""
         directoryInfoYamlData = yaml.safe_load (backupMap[backupRecord.datetime + "/pathList"])
         for pathData in directoryInfoYamlData:
             print "Recording backup data %s/%r" % (backupRecord.datetime, pathData)
@@ -219,6 +262,8 @@ class WrittenRecords:
                 self.recordHashWritten (pathData["hash"], backupRecord.datetime + pathData["path"])
     
     def recordPreviousBackups(self, backupMap, backupRecords):
+        """Record the hashes of all files written from the last full backup onwards (or from the first
+        backup if for some reason there is no full backup."""
         fullFound = False
         i = len(backupRecords)-1
         while not fullFound and i >= 0:
@@ -230,6 +275,7 @@ class WrittenRecords:
             i -= 1
             
 class BaseFileHash(object):
+    """Description of a file: it's (basic) name and hash"""
     def __init__(self, name, hash):
         self.name = name
         self.hash = hash
@@ -240,18 +286,23 @@ class BaseFileHash(object):
 pathRegex = re.compile("[/]([^/]*)([/].*)?")
         
 def analysePath(path):
+    """Analyse a path starting with '/' and with '/' separators into 1st part and remainder
+    e.g. '/x/y' into 'x' and '/y' and '/x' into 'x' and None."""
     pathMatch = pathRegex.match(path)
     rootPath = pathMatch.group(1)
     remainderPath = pathMatch.group(2)
     return (rootPath, remainderPath)
 
 class BaseDirHash(object):
+    """Description of a directory as a map of immediate sub-directories 
+    and immediately contained files"""
     def __init__(self, name):
         self.name = name
         self.children = []
         self.childrenMap = {}
         
     def addChild(self, childHash):
+        """Add a child, i.e. a directory or file"""
         self.children.append (childHash)
         self.childrenMap[childHash.name] = childHash
         
@@ -262,6 +313,9 @@ class BaseDirHash(object):
             child.printIndented(indent = childIndent)
             
     def addFileSummary(self, path, hash):
+        """Add a file given it's full path name relative to this directory
+        (necessarily constructing the intermediate sub-directories if they
+        are not already there)"""
         rootPath, remainderPath = analysePath(path)
         if remainderPath is None:
             self.addChild (BaseFileHash(rootPath, hash))
@@ -270,6 +324,7 @@ class BaseDirHash(object):
             childDirHash.addFileSummary (remainderPath, hash)
             
     def getOrCreateChildDirHash(self, name):
+        """Return DirHash for an immediate sub-directory, creating it if necessary"""
         if name in self.childrenMap:
             return self.childrenMap[name]
         else:
@@ -278,6 +333,9 @@ class BaseDirHash(object):
             return childDirHash
             
     def addDirSummary(self, path):
+        """Add a sub-directory given it's full path name relative to this directory
+        (necessarily constructing the intermediate sub-directories if they
+        are not already there)"""
         rootPath, remainderPath = analysePath(path)
         if remainderPath is None:
             self.addChild (BaseDirHash(rootPath))
@@ -286,6 +344,8 @@ class BaseDirHash(object):
             childDirHash.addDirSummary (remainderPath)
 
 class FileHash(BaseFileHash):
+    """Information about a file with a relative path name based on actual
+    contents of actual file in actual file-system base directory"""
     def __init__(self, dir, name):
         filename = dir + "/" + name
         content = readFileBytes (filename)
@@ -294,6 +354,8 @@ class FileHash(BaseFileHash):
         self.isDir = False
         
 class DirHash(BaseDirHash):
+    """Information about files within a directory with a relative path name 
+    based on actual contents of actual directory in actual file-system base directory"""
     def __init__(self, dir, name = None):
         super(DirHash, self).__init__(name)
         fullPath = name and (dir + "/" + name) or dir
@@ -306,21 +368,30 @@ class DirHash(BaseDirHash):
                 
 class ContentKey(object):
     def __init__(self, datetime, filePath):
+        """Parameters for key used to look up file contents from a particular backup within a backup map.
+        Note that filePath is expected to start with a '/'"""
         self.datetime = datetime
         self.filePath = filePath
         
     def fileKey(self):
+        """The actual key.
+        Note: "/files" infix is used to allow for other meta-data to be associated with the datetime."""
         return self.datetime + "/files" + self.filePath
 
             
 class IncrementalBackups:
+    """A set of dated full or incremental backups within a given backup map.
+    This object does _not_ (currently) record _where_ the file contents came from.
+    """
     def __init__(self, backupMap):
         self.backupMap = backupMap
         
     def getDateTimeString(self):
+        """Get a date time string to use for a new dated backup"""
         return time.strftime("%Y-%b-%d.%H-%M-%S")
     
     def getBackupRecords(self):
+        """Retrieve the BackupRecord objects describing any existing backups"""
         if "backupRecords" in self.backupMap:
             backupsListYamlData = yaml.safe_load(self.backupMap["backupRecords"])
         else:
@@ -328,6 +399,8 @@ class IncrementalBackups:
         return [BackupRecord.fromYamlData(record) for record in backupsListYamlData]
     
     def getBackupGroups(self):
+        """Get backup groups, i.e. backup records grouped into lists of incremental backups with a preceding
+        full backup."""
         backupGroups = []
         records = self.getBackupRecords()
         currentBackupGroup = []
@@ -340,6 +413,7 @@ class IncrementalBackups:
         return backupGroups
     
     def listBackups(self):
+        """Print out list of all backups"""
         recordGroups = self.getBackupGroups()
         for recordGroup in recordGroups:
             for i, record in enumerate(recordGroup):
@@ -350,16 +424,20 @@ class IncrementalBackups:
                 print "%s%s: %s" % (indent, record.type, record.datetime)
                 
     def pruneBackup(self, backupRecord, dryRun):
+        """Prune the backup indicated by the backup record (with dry-run option)"""
         print "  prune backup %r" % backupRecord
         backupSubMap = self.backupMap.subMap(backupRecord.datetime)
         deleteMapValues(backupSubMap, dryRun)
                 
     def pruneBackupGroup(self, recordGroup, dryRun):
+        """Prune all backups in a backup group (with dry-run option)"""
         print "Backup group to prune: %r" % recordGroup
         for record in recordGroup:
             self.pruneBackup(record, dryRun)
                 
     def pruneBackups(self, keep = 1, dryRun = True):
+        """Prune previous backup groups, keeping only specified number of most
+        recent backup groups (but at least one)"""
         print "Pruning backups, keep %d%s" % (keep, dryRun and ", DRY RUN" or "")
         if keep < 1:
             raise Exception ("Number of full backups to keep must be at least 1")
@@ -381,6 +459,13 @@ class IncrementalBackups:
                 self.backupMap["backupRecords"] = yaml.dump(backupRecordsYamlData)
         
     def doBackup(self, directoryInfo, full = True):
+        """Create a new backup of a source directory (full or incremental).
+        Note: 'incremental' is based on comparing the hashes of file contents already marked as
+        written to previous backups in the same backup group. It is not based on any comparison
+        of files done on the source computer. If a given file contents has already been written, 
+        then the relevant file written as a pointer to the previous file with the same contents
+        (which may or may not be the same file in the same place on the source computer).
+        """
         dateTimeString = self.getDateTimeString()
         backupKeyBase = dateTimeString
         backupFilesKeyBase = backupKeyBase + "/files"
@@ -413,24 +498,31 @@ class IncrementalBackups:
         print "new backup records = %r" % backupRecords
         
     def doFullBackup(self, directoryInfo):
+        """Do a full backup of a source directory"""
         self.doBackup (directoryInfo, full = True)
         
     def doIncrementalBackup(self, directoryInfo):
+        """Do an incremental backup of a source directory"""
         self.doBackup (directoryInfo, full = False)
         
     def getRestoreRecords(self, backupRecords):
+        """Return records for the most recent backup group"""
         pos = len(backupRecords)-1
         while pos >= 0 and backupRecords[pos].type != "full":
             pos -= 1
         return backupRecords[pos:]
     
     def getPathSummaryDataList(self, backupRecord):
+        """Get YAML data representing information about files and directories backed up
+        in a specified dated backup"""
         dateTimeString = backupRecord.datetime
         backupKeyBase = dateTimeString
         pathSummariesData = yaml.safe_load(self.backupMap[backupKeyBase + "/pathList"])
         return pathSummariesData
     
     def getHashContentKeyMap(self, restoreRecords, pathSummaryLists):
+        """Construct a map from hash keys to the backup keys to which those file contents
+        were written (within the given backup group which is being restored from)"""
         hashContentKeyMap = {}
         for restoreRecord, pathSummaryList in zip(restoreRecords, pathSummaryLists):
             for pathSummary in pathSummaryList:
@@ -439,6 +531,7 @@ class IncrementalBackups:
         return hashContentKeyMap
     
     def restoreDirectory(self, restoreDir, pathSummaryList, hashContentKeyMap, overwrite):
+        """Restore a directory using path summaries and hash content key map, with optional overwrite"""
         print "Restoring directory %s ..." % restoreDir
         for pathSummary in pathSummaryList:
             fullPath = pathSummary.fullPath (restoreDir)
@@ -459,6 +552,7 @@ class IncrementalBackups:
                 print "WARNING: Unknown path type %r" % pathSummary
         
     def restore(self, restoreDir, overwrite = False):
+        """Restore the most recent backup to a destination directory (with optional overwrite)"""
         if not os.path.exists(restoreDir):
             os.makedirs(restoreDir)
         if not os.path.isdir(restoreDir):
@@ -484,13 +578,19 @@ class IncrementalBackups:
         print "Restored data to %s" % restoreDir
         
 def listBackups(backupMap):
+    """List all backups in a backup map"""
     IncrementalBackups(backupMap).listBackups()
         
 def pruneBackups(backupMap, keep = 1, dryRun = True):
+    """Prune backups in a backup map, keeping specified number of backup groups (minimum 1)"""
     IncrementalBackups(backupMap).pruneBackups(keep = keep, dryRun = dryRun)
 
 def doBackup(sourceDirectory, backupMap, testRestoreDir = None, full = False, verify = False, 
              doTheBackup = True):
+    """Do a backup from source directory to backup map, with options 'full' (or incremental)
+    and 'verify' (in which case a test restore is done to the test restore directory).
+    Also, if 'doTheBackup' is set to false, only do the test restore and verify.
+    """
     startTime = datetime.datetime.now()
     print ""
     print "Started %s" % startTime
