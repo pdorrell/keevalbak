@@ -36,25 +36,26 @@ def getBackupMap(backupName):
     return S3BucketMap(localenv.s3.accessKey, localenv.s3.secretAccessKey, 
                        localenv.backups.backupBucket, prefix = backupPrefix)
 
-def backup(backupName, full, verify):
+def backup(backupName, full, verify, verifyIncrementally = False):
     """Do the named backup, with options for full (or incremental) and verify"""
     testRestoreDir = localenv.backups.testRestoreDir
     backupDetails = localenv.backups.backups[backupName]
     backupMap = getBackupMap(backupName)
-    BackupOperations.doBackup (backupDetails.source, backupMap, testRestoreDir, full = full, verify = verify)
+    BackupOperations.doBackup (backupDetails.source, backupMap, testRestoreDir, full = full, 
+                               verify = verify, verifyIncrementally = verifyIncrementally)
     
 def listBackups(backupName):
     """List all backups in the named backup"""
     backupMap = getBackupMap(backupName)
     BackupOperations.listBackups(backupMap)
     
-def incrementalBackup(backupName, verify):
+def incrementalBackup(backupName, verify, verifyIncrementally = False):
     """Do an incremental backup"""
-    backup(backupName, full = False, verify = verify)
+    backup(backupName, full = False, verify = verify, verifyIncrementally = verifyIncrementally)
     
 def fullBackup(backupName, verify):
     """Do a full backup"""
-    backup(backupName, full = True, verify = verify)
+    backup(backupName, full = True, verify = verify, verifyIncrementally = False)
     
 def pruneBackups(backupName, keep = 1, dryRun = True):
     """Prune backups from a named backup"""
@@ -63,9 +64,9 @@ def pruneBackups(backupName, keep = 1, dryRun = True):
 
 if __name__ == '__main__':
     # comment or uncomment lines here according to taste
-    incrementalBackup("test", verify = True)
+    incrementalBackup("test", verify = True, verifyIncrementally = True)
     #incrementalBackup("test", verify = False)
     #fullBackup("test", verify = True)
     #fullBackup("test", verify = False)
-    listBackups("test")
-    pruneBackups("test", keep = 2, dryRun = True)
+    #listBackups("test")
+    #pruneBackups("test", keep = 2, dryRun = True)

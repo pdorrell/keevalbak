@@ -104,6 +104,14 @@ class ErrorDiff:
         if there were any."""
         print "##ERROR: %s" % message
         self.errors.append (message)
+        
+    def logAndCheck(self, dir1, dir2):
+        print "Errors = %r" % self.errors
+        numErrors = len(self.errors)
+        if numErrors > 0:
+            raise "%d differences found between %s and %s: %s" % (numErrors, 
+                                                                  dir1, dir2, 
+                                                                  ", ".join(self.errors))
 
 def verifyIdentical(dir1, dir2):
     """Verify two directories have identical sub-directories and file contents.
@@ -113,12 +121,7 @@ def verifyIdentical(dir1, dir2):
     comparison = DirectoryComparator(dir1, dir2, 
                                      log = printLog, logDiff = errorDiff)
     comparison.compareDirs()
-    print "Errors = %r" % errorDiff.errors
-    numErrors = len(errorDiff.errors)
-    if numErrors > 0:
-        raise "%d differences found between %s and %s: %s" % (numErrors, 
-                                                              dir1, dir2, 
-                                                              ", ".join(errorDiff.errors))
+    errorDiff.logAndCheck(dir1, dir2)
 
 def main():
     """Compare two directories passed in as arguments"""
