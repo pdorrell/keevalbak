@@ -267,7 +267,7 @@ class WrittenRecords:
         hash value and backup map key in the written records."""
         directoryInfoYamlData = yaml.safe_load (backupMap[backupRecord.datetime + "/pathList"])
         for pathData in directoryInfoYamlData:
-            print "Recording backup data %s/%r" % (backupRecord.datetime, pathData)
+            #print "Recording backup data %s/%r" % (backupRecord.datetime, pathData)
             if pathData["type"] == "file" and pathData["written"]:
                 self.recordHashWritten (pathData["hash"], backupRecord.datetime + pathData["path"])
     
