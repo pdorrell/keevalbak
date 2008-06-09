@@ -440,7 +440,9 @@ class ContentKey(object):
     
     def __str__(self):
         return "[%s:%s]" % (self.datetime, self.filePath)
-
+    
+    def __repr__(self):
+        return self.__str__()
             
 class IncrementalBackups:
     """A set of dated full or incremental backups within a given backup map.
