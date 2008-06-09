@@ -220,19 +220,21 @@ class HashVerificationRecords(object):
             
 class BackupRecord:
     """A record of a backup made: it's date/time, and whether it was full or incremental."""
-    def __init__(self, type, datetime):
+    def __init__(self, type, datetime, completed):
         """construct from 'full' or 'incremental' and the date time"""
         self.type = type
         self.datetime = datetime
-        
+        self.completed = completed
+
     @staticmethod
     def fromYamlData(data):
         """Construct backup record from YAML data (inverse of toYamlData)"""
-        return BackupRecord(data["type"], data["datetime"])
+        # completed defaults to True because previous version of keevalback only recorded when complete
+        return BackupRecord(data["type"], data["datetime"], data.get("completed", True))
         
     def toYamlData(self):
         """Convert to data to be stored in YAML"""
-        return {"type": self.type, "datetime": self.datetime}
+        return {"type": self.type, "datetime": self.datetime, "completed": self.completed}
     
     def isFull(self):
         return self.type == "full"
@@ -540,6 +542,7 @@ class IncrementalBackups:
         dateTimeString = self.getDateTimeString()
         backupKeyBase = dateTimeString
         backupFilesKeyBase = backupKeyBase + "/files"
+        print "retrieving existing backup records ..."
         backupRecords = self.getBackupRecords()
         print "backup records = %r" % backupRecords
         writtenRecords = WrittenRecords()
@@ -563,7 +566,7 @@ class IncrementalBackups:
                     print "Content of %r already written to %s" % (pathSummary, 
                                                                    writtenRecords.locationWritten (pathSummary.hash))
         self.recordPathSummaries (backupKeyBase, directoryInfo)
-        backupRecords.append(BackupRecord(full and "full" or "incremental", dateTimeString))
+        backupRecords.append(BackupRecord(full and "full" or "incremental", dateTimeString, complete = True))
         self.setBackupRecords(backupRecords)
         
     def doFullBackup(self, directoryInfo):
@@ -574,12 +577,22 @@ class IncrementalBackups:
         """Do an incremental backup of a source directory"""
         self.doBackup (directoryInfo, full = False)
         
-    def getRestoreRecords(self, backupRecords):
+    def getBackupRecordForDateTime(self, backupRecords, dateTimeString):
+        for index, backupRecord in enumerate(backupRecords):
+            if backupRecord.datetime == dateTimeString:
+                return index
+        raise "No backup record found for date-time %r" % dateTimeString
+        
+    def getRestoreRecords(self, backupRecords, dateTimeString):
         """Return records for the most recent backup group"""
-        pos = len(backupRecords)-1
+        if dateTimeString is None:
+            restorePos = len(backupRecords)-1
+        else:
+            restorePos = self.getBackupRecordForDateTime (backupRecords, dateTimeString)
+        pos = restorePos
         while pos >= 0 and backupRecords[pos].type != "full":
             pos -= 1
-        return backupRecords[pos:]
+        return backupRecords[pos:(restorePos+1)]
     
     def getPathSummaryDataList(self, backupRecord):
         """Get YAML data representing information about files and directories backed up
@@ -628,12 +641,13 @@ class IncrementalBackups:
         if updateVerificationRecords:
             verificationRecords.updateRecords()
             
-    def getRestoreDetails(self):
+    def getRestoreDetails(self, dateTimeString):
         backupRecords = self.getBackupRecords()
         print "backupRecords = %r" % backupRecords
         if len(backupRecords) == 0:
             raise "No backup records found"
-        restoreRecords = self.getRestoreRecords(backupRecords)
+        print "Get restore records for %s" % dateTimeString or "(most recent backup)"
+        restoreRecords = self.getRestoreRecords(backupRecords, dateTimeString)
         print "restoreRecords = %r" % restoreRecords
         pathSummaryDataLists = [self.getPathSummaryDataList(record) for record in restoreRecords]
         pathSummaryLists = [[PathSummary.fromYamlData(pathSummaryData) for pathSummaryData in pathSummaryDataList] 
@@ -644,10 +658,10 @@ class IncrementalBackups:
         print "Target backup for restore: %r" % backupToRestore
         print "pathSummaryLists = %r" % pathSummaryLists
         pathSummaryListToRestore = pathSummaryLists[-1]
-        return pathSummaryListToRestore, hashContentKeyMap
+        return pathSummaryListToRestore, hashContentKeyMap, backupToRestore
     
-    def getRestoredDirHash(self):
-        pathSummaryList, hashContentKeyMap = self.getRestoreDetails()
+    def getRestoredDirHash(self, dateTimeString = None):
+        pathSummaryList, hashContentKeyMap, backupToRestore = self.getRestoreDetails(dateTimeString)
         verificationRecords = HashVerificationRecords(self.backupMap)
         restoredDirHash = BaseDirHash(None, "backed up files")
         for pathSummary in pathSummaryList:
@@ -680,15 +694,19 @@ class IncrementalBackups:
         localDirHash.compareToOtherDirHash (restoredDirHash, 0, CompareDirectories.printLog, errorDiff)
         errorDiff.logAndCheck (localDirHash.description, restoredDirHash.description)
             
-    def restore(self, restoreDir, overwrite = False, updateVerificationRecords = False):
-        """Restore the most recent backup to a destination directory (with optional overwrite)"""
+    def restore(self, restoreDir, dateTimeString = None, 
+                overwrite = False, updateVerificationRecords = False, allowIncomplete = False):
+        """Restore the specified (or otherwise the most recent) backup to a 
+        destination directory (with optional overwrite)"""
         if not os.path.exists(restoreDir):
             os.makedirs(restoreDir)
         if not os.path.isdir(restoreDir):
             raise "Restore target %s is not a directory" % restoreDir
         if not overwrite and len(os.listdir(restoreDir)) > 0:
             raise "Restore target %s is not empty" % restoreDir
-        pathSummaryListToRestore, hashContentKeyMap = self.getRestoreDetails()
+        pathSummaryListToRestore, hashContentKeyMap, backupToRestore = self.getRestoreDetails(dateTimeString)
+        if not allowIncomplete and not backupToRestore.complete:
+            raise "Backup dated %s is not complete and allowIncomplete is set to false" % backupToRestore.datetime
         self.restoreDirectory (restoreDir, pathSummaryListToRestore, hashContentKeyMap, 
                                overwrite, updateVerificationRecords)
         print "Restored data to %s" % restoreDir
