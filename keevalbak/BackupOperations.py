@@ -525,6 +525,9 @@ class IncrementalBackups:
                 for group in remainingGroups:
                     remainingRecords += group
                 self.setBackupRecords(remainingRecords)
+                
+    def recordPathSummaries(self, backupKeyBase, directoryInfo):
+        self.backupMap[backupKeyBase + "/pathList"] = yaml.dump(directoryInfo.getPathSummariesYamlData())
         
     def doBackup(self, directoryInfo, full = True):
         """Create a new backup of a source directory (full or incremental).
@@ -559,7 +562,7 @@ class IncrementalBackups:
                 else:
                     print "Content of %r already written to %s" % (pathSummary, 
                                                                    writtenRecords.locationWritten (pathSummary.hash))
-        self.backupMap[backupKeyBase + "/pathList"] = yaml.dump(directoryInfo.getPathSummariesYamlData())
+        self.recordPathSummaries (backupKeyBase, directoryInfo)
         backupRecords.append(BackupRecord(full and "full" or "incremental", dateTimeString))
         self.setBackupRecords(backupRecords)
         
