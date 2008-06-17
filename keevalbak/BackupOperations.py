@@ -651,7 +651,7 @@ class IncrementalBackups:
         print "backupRecords = %r" % backupRecords
         if len(backupRecords) == 0:
             raise "No backup records found"
-        print "Get restore records for %s" % dateTimeString or "(most recent backup)"
+        print "Get restore records for %s" % (dateTimeString or "(most recent backup)")
         restoreRecords = self.getRestoreRecords(backupRecords, dateTimeString)
         print "restoreRecords = %r" % restoreRecords
         pathSummaryDataLists = [self.getPathSummaryDataList(record) for record in restoreRecords]
