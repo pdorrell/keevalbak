@@ -240,7 +240,7 @@ class BackupRecord:
         return self.type == "full"
         
     def __str__(self):
-        return "[Backup: %s %s]" % (self.type, self.datetime)
+        return "[Backup: %s %s %s]" % (self.type, self.datetime, self.completed and "complete" or "INCOMPLETE")
     
     def __repr__(self):
         return self.__str__()
@@ -465,7 +465,7 @@ class IncrementalBackups:
             backupsListYamlData = []
         return [BackupRecord.fromYamlData(record) for record in backupsListYamlData]
     
-    def setBackupRecords(self, backupRecords):
+    def saveBackupRecords(self, backupRecords):
         backupRecordsYamlData = [record.toYamlData() for record in backupRecords]
         self.backupMap["backupRecords"] = yaml.dump(backupRecordsYamlData)
         print "new backup records = %r" % backupRecords
@@ -493,7 +493,8 @@ class IncrementalBackups:
                     indent = "*"
                 else:
                     indent = "   "
-                print "%s%s: %s" % (indent, record.type, record.datetime)
+                print "%s%s: %s %s" % (indent, record.type, record.datetime, 
+                                       record.completed and "complete" or "INCOMPLETE")
                 
     def pruneBackup(self, backupRecord, dryRun):
         """Prune the backup indicated by the backup record (with dry-run option)"""
@@ -526,7 +527,7 @@ class IncrementalBackups:
                 remainingRecords = []
                 for group in remainingGroups:
                     remainingRecords += group
-                self.setBackupRecords(remainingRecords)
+                self.saveBackupRecords(remainingRecords)
                 
     def recordPathSummaries(self, backupKeyBase, directoryInfo):
         self.backupMap[backupKeyBase + "/pathList"] = yaml.dump(directoryInfo.getPathSummariesYamlData())
@@ -545,6 +546,10 @@ class IncrementalBackups:
         print "retrieving existing backup records ..."
         backupRecords = self.getBackupRecords()
         print "backup records = %r" % backupRecords
+        currentBackupRecord = BackupRecord(full and "full" or "incremental", dateTimeString, completed = False)
+        backupRecords.append(currentBackupRecord)
+        self.recordPathSummaries (backupKeyBase, directoryInfo)
+        self.saveBackupRecords(backupRecords)
         writtenRecords = WrittenRecords()
         if not full:
             if len(backupRecords) == 0:
@@ -566,8 +571,8 @@ class IncrementalBackups:
                     print "Content of %r already written to %s" % (pathSummary, 
                                                                    writtenRecords.locationWritten (pathSummary.hash))
         self.recordPathSummaries (backupKeyBase, directoryInfo)
-        backupRecords.append(BackupRecord(full and "full" or "incremental", dateTimeString, complete = True))
-        self.setBackupRecords(backupRecords)
+        currentBackupRecord.completed = True
+        self.saveBackupRecords(backupRecords)
         
     def doFullBackup(self, directoryInfo):
         """Do a full backup of a source directory"""
@@ -705,7 +710,7 @@ class IncrementalBackups:
         if not overwrite and len(os.listdir(restoreDir)) > 0:
             raise "Restore target %s is not empty" % restoreDir
         pathSummaryListToRestore, hashContentKeyMap, backupToRestore = self.getRestoreDetails(dateTimeString)
-        if not allowIncomplete and not backupToRestore.complete:
+        if not allowIncomplete and not backupToRestore.completed:
             raise "Backup dated %s is not complete and allowIncomplete is set to false" % backupToRestore.datetime
         self.restoreDirectory (restoreDir, pathSummaryListToRestore, hashContentKeyMap, 
                                overwrite, updateVerificationRecords)

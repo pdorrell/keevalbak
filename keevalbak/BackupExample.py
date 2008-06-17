@@ -64,9 +64,9 @@ def pruneBackups(backupName, keep = 1, dryRun = True):
 
 if __name__ == '__main__':
     # comment or uncomment lines here according to taste
-    incrementalBackup("test", verify = True, verifyIncrementally = True)
-    #incrementalBackup("test", verify = False)
-    #fullBackup("test", verify = True)
+    #incrementalBackup("test", verify = True, verifyIncrementally = True)
+    #incrementalBackup("test", verify = True)
+    fullBackup("test", verify = True)
     #fullBackup("test", verify = False)
     #listBackups("test")
     #pruneBackups("test", keep = 2, dryRun = True)
