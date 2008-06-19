@@ -448,22 +448,34 @@ class ContentKey(object):
     
 class BackupRecordUpdater:
     """Object responsible for recording current state of backup in progress"""
-    def __init__(self, backups, backupRecords, currentBackupRecord, backupKeyBase, directoryInfo):
+    def __init__(self, backups, backupRecords, currentBackupRecord, backupKeyBase, 
+                 directoryInfo, recordTrigger = 100000):
         self.backups = backups
         self.backupRecords = backupRecords
         self.currentBackupRecord = currentBackupRecord
         self.backupKeyBase = backupKeyBase
         self.directoryInfo = directoryInfo
+        self.bytesWritten = 0
+        self.unrecordedBytes = 0
+        self.recordTrigger = recordTrigger
         
     def record(self):
         self.backups.recordPathSummaries (self.backupKeyBase, self.directoryInfo)
         self.backups.saveBackupRecords(self.backupRecords)
         
+    def recordContentWrittenSize(self, contentWrittenSize):
+        self.bytesWritten += contentWrittenSize
+        print " wrote %d bytes, total now %d ..." % (contentWrittenSize, self.bytesWritten)
+        self.unrecordedBytes += contentWrittenSize
+        if self.unrecordedBytes >= self.recordTrigger:
+            print " unrecordedBytes = %d, recording backup state ..." % self.unrecordedBytes
+            self.backups.recordPathSummaries (self.backupKeyBase, self.directoryInfo)
+            self.unrecordedBytes = 0
+        
     def recordCompleted(self):
         self.currentBackupRecord.completed = True
         self.record()
         
-            
 class IncrementalBackups:
     """A set of dated full or incremental backups within a given backup map.
     This object does _not_ (currently) record _where_ the file contents came from.
@@ -586,6 +598,7 @@ class IncrementalBackups:
                     pathSummary.written = True
                     self.backupMap[fileContentKey] = content
                     writtenRecords.recordHashWritten (pathSummary.hash, fileContentKey)
+                    backupRecordUpdater.recordContentWrittenSize (len(content))
                 else:
                     print "Content of %r already written to %s" % (pathSummary, 
                                                                    writtenRecords.locationWritten (pathSummary.hash))
