@@ -445,6 +445,24 @@ class ContentKey(object):
     
     def __repr__(self):
         return self.__str__()
+    
+class BackupRecordUpdater:
+    """Object responsible for recording current state of backup in progress"""
+    def __init__(self, backups, backupRecords, currentBackupRecord, backupKeyBase, directoryInfo):
+        self.backups = backups
+        self.backupRecords = backupRecords
+        self.currentBackupRecord = currentBackupRecord
+        self.backupKeyBase = backupKeyBase
+        self.directoryInfo = directoryInfo
+        
+    def record(self):
+        self.backups.recordPathSummaries (self.backupKeyBase, self.directoryInfo)
+        self.backups.saveBackupRecords(self.backupRecords)
+        
+    def recordCompleted(self):
+        self.currentBackupRecord.completed = True
+        self.record()
+        
             
 class IncrementalBackups:
     """A set of dated full or incremental backups within a given backup map.
@@ -548,8 +566,9 @@ class IncrementalBackups:
         print "backup records = %r" % backupRecords
         currentBackupRecord = BackupRecord(full and "full" or "incremental", dateTimeString, completed = False)
         backupRecords.append(currentBackupRecord)
-        self.recordPathSummaries (backupKeyBase, directoryInfo)
-        self.saveBackupRecords(backupRecords)
+        backupRecordUpdater = BackupRecordUpdater (self, backupRecords, currentBackupRecord, 
+                                                   backupKeyBase, directoryInfo)
+        backupRecordUpdater.record()
         writtenRecords = WrittenRecords()
         if not full:
             if len(backupRecords) == 0:
@@ -570,9 +589,7 @@ class IncrementalBackups:
                 else:
                     print "Content of %r already written to %s" % (pathSummary, 
                                                                    writtenRecords.locationWritten (pathSummary.hash))
-        self.recordPathSummaries (backupKeyBase, directoryInfo)
-        currentBackupRecord.completed = True
-        self.saveBackupRecords(backupRecords)
+        backupRecordUpdater.recordCompleted()
         
     def doFullBackup(self, directoryInfo):
         """Do a full backup of a source directory"""
