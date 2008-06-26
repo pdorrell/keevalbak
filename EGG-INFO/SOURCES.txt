@@ -1,0 +1,14 @@
+EGG-INFO
+EGG-INFO/dependency_links.txt
+EGG-INFO/not-zip-safe
+EGG-INFO/PKG-INFO
+EGG-INFO/requires.txt
+EGG-INFO/top_level.txt
+keevalbak
+keevalbak/BackupExample.py
+keevalbak/BackupOperations.py
+keevalbak/CompareDirectories.py
+keevalbak/s3bucketmap.py
+keevalbak/S3BucketMapExample.py
+keevalbak/__init__.py
+

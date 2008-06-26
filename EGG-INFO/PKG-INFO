@@ -1,0 +1,15 @@
+Metadata-Version: 1.0
+Name: keevalbak
+Version: 1.1a
+Summary: Backup files to Amazon S3
+Home-page: http://www.1729.com/software/keevalbak/index.html
+Author: Philip Dorrell
+Author-email: http://www.1729.com/email.html
+License: MIT
+Description: Python scripts for full and incremental backups to an S3 bucket
+Platform: Posix; MacOS X; Windows
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Internet
