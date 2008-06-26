@@ -82,7 +82,7 @@ class FileSummary(PathSummary):
         self.written = written
         
     def __unicode__(self):
-        return u"FILE: %s : %s%s" % (self.relativePath, self.hash, self.written and " W" or "")
+        return u"FILE: %r : %s%s" % (self.relativePath, self.hash, self.written and " W" or "")
         
     def toYamlData(self):
         """Convert to YAML"""
@@ -105,7 +105,7 @@ class DirSummary(PathSummary):
         self.isFile = False
         
     def __unicode__(self):
-        return u"DIR:  %s" % (self.relativePath)
+        return u"DIR:  %r" % (self.relativePath)
         
     def toYamlData(self):
         """Convert to YAML"""
@@ -166,7 +166,7 @@ class DirectoryInfo:
                 self.addSummary(self.createDirSummary(childRelativePath))
                 self.summarizeSubDir (childRelativePath)
             else:
-                print "UNKNOWN OBJECT %s in %s" % (childName, self.path + relativePath)
+                print "UNKNOWN OBJECT %r in %r" % (childName, self.path + relativePath)
                 
 class HashVerificationRecords(object):
     """Records of verified hashes of backed up files (i.e. verified by actually reading
@@ -297,11 +297,11 @@ class BaseFileHash(object):
         return False
             
     def printIndented(self, indent):
-        print "%sFile %s: %s" % (indent, self.name, self.hash)
+        print "%sFile %r: %s" % (indent, self.name, self.hash)
         
     def compareToOtherFileHash (self, otherFileHash, indent, log, logDiff):
         if self.hash != otherFileHash.hash:
-            self.logDiff ("File %s has hash %s in %s but hash %s in %s" %
+            self.logDiff ("File %r has hash %s in %r but hash %s in %r" %
                           self.name, self.hash, self.description, 
                           otherFileHash.hash, otherFileHash.description)
         
@@ -336,7 +336,7 @@ class BaseDirHash(object):
         return childName in self.childrenMap
         
     def printIndented(self, indent = ""):
-        print "%sDir %s" % (indent, self.name)
+        print "%sDir %r" % (indent, self.name)
         childIndent = "  " + indent
         for child in self.children:
             child.printIndented(indent = childIndent)
@@ -373,38 +373,38 @@ class BaseDirHash(object):
             childDirHash.addDirSummary (remainderPath)
             
     def compareToOtherDirHash(self, otherDirHash, indent, log, logDiff):
-        log (indent, "comparing directory %s" % self.name)
+        log (indent, "comparing directory %r" % self.name)
         for child1 in self.children:
             name1 = child1.name
             child2 = otherDirHash.childrenMap.get(name1, None)
             if child1.isDir():
                 if child2 != None:
                     if not child2.isDir():
-                        logDiff ("%s is a directory in %s but a file in %s" % 
-                                 (childSubPath, self.description, otherDirHash.description))
+                        logDiff ("%r is a directory in %r but a file in %r" % 
+                                 (name1, self.description, otherDirHash.description))
                     else:
                         child1.compareToOtherDirHash (child2, indent+1, log, logDiff)
                 else:
-                    self.logDiff("%s is a directory in %s but does not exist in %s" % 
-                                 (childSubPath, self.description, otherDirHash.description))
+                    logDiff("%r is a directory in %r but does not exist in %r" % 
+                            (name1, self.description, otherDirHash.description))
             else:
                 if child2 != None:
                     if child2.isDir():
-                        self.logDiff("%s is a file in %s but a directory in %s" % 
-                                     (childSubPath, self.description, otherDirHash.description))
+                        logDiff("%r is a file in %r but a directory in %r" % 
+                                (name1, self.description, otherDirHash.description))
                     else:
                         child1.compareToOtherFileHash (child2, indent+1, log, logDiff)
                 else:
-                    self.logDiff("%s is a file in %s but does not exist in %s" % 
-                                 (childSubPath, self.description, otherDirHash.description))
+                    logDiff("%r is a file in %r but does not exist in %r" % 
+                            (name1, self.description, otherDirHash.description))
             for child2 in otherDirHash.children:
                 if not self.hasChildNamed (child2.name):
                     if child2.isDir():
-                        self.logDiff("%s does not exist in %s but is a directory in %s" % 
-                                     (child2.name, self.description, otherDirHash.description))
+                        logDiff("%r does not exist in %r but is a directory in %r" % 
+                                (child2.name, self.description, otherDirHash.description))
                     else:
-                        self.logDiff("%s does not exist in %s but is a file in %s" % 
-                                     (child2.name, self.description, otherDirHash.description))
+                        logDiff("%r does not exist in %r but is a file in %r" % 
+                                (child2.name, self.description, otherDirHash.description))
 
 class FileHash(BaseFileHash):
     """Information about a file with a relative path name based on actual
@@ -420,7 +420,7 @@ class DirHash(BaseDirHash):
     def __init__(self, dir, name, description):
         super(DirHash, self).__init__(name, description)
         fullPath = name and (dir + "/" + name) or dir
-        print "Creating DirHash for %s" % fullPath
+        print "Creating DirHash for %r" % fullPath
         for childName in os.listdir(fullPath):
             childPath = fullPath + "/" + childName
             if os.path.isfile(childPath):
@@ -651,7 +651,7 @@ class IncrementalBackups:
     def restoreDirectory(self, restoreDir, pathSummaryList, hashContentKeyMap, overwrite, 
                          updateVerificationRecords = False):
         """Restore a directory using path summaries and hash content key map, with optional overwrite"""
-        print "Restoring directory %s ..." % restoreDir
+        print "Restoring directory %r ..." % restoreDir
         if updateVerificationRecords:
             verificationRecords = HashVerificationRecords(self.backupMap)
         for pathSummary in pathSummaryList:
@@ -659,10 +659,10 @@ class IncrementalBackups:
             if pathSummary.isDir:
                 if not os.path.isdir(fullPath):
                     os.makedirs(fullPath)
-                print "Restored DIR  %s" % fullPath
+                print "Restored DIR  %r" % fullPath
             elif pathSummary.isFile:
                 if not pathSummary.hash in hashContentKeyMap:
-                    print "WARNING: No written content found for %s (hash %s)" % (pathSummary.relativePath, 
+                    print "WARNING: No written content found for %r (hash %s)" % (pathSummary.relativePath, 
                                                                                   pathSummary.hash)
                 contentKey = hashContentKeyMap[pathSummary.hash]
                 content = self.backupMap[contentKey.fileKey()]
@@ -703,14 +703,14 @@ class IncrementalBackups:
         for pathSummary in pathSummaryList:
             if pathSummary.isDir:
                 restoredDirHash.addDirSummary(pathSummary.relativePath)
-                print " DIR  %s" % pathSummary.relativePath
+                print " DIR  %r" % pathSummary.relativePath
             elif pathSummary.isFile:
                 contentKey = hashContentKeyMap[pathSummary.hash]
                 # We could compare pathSummary.hash and fileHash, 
                 # but the verified fileHash is what matters (to compare to local file)
                 fileHash = verificationRecords.getWrittenFileHash(contentKey.datetime, contentKey.filePath)
                 restoredDirHash.addFileSummary(pathSummary.relativePath, fileHash)
-                print " FILE %s" % pathSummary.relativePath
+                print " FILE %r" % pathSummary.relativePath
             else:
                 print "WARNING: Unknown path type %r" % pathSummary
         verificationRecords.updateRecords()
@@ -718,12 +718,12 @@ class IncrementalBackups:
         
     def incrementalVerify(self, sourceDir):
         """Incrementally verify a directory using path summaries and hash content key map, with optional overwrite"""
-        print "Incrementally verifying against directory %s ..." % sourceDir
+        print "Incrementally verifying against directory %r ..." % sourceDir
         restoredDirHash = self.getRestoredDirHash()
         print "RESTORE DIR HASH:"
         restoredDirHash.printIndented()
         print ""
-        print "LOCAL DIR HASH for %s" % sourceDir
+        print "LOCAL DIR HASH for %r" % sourceDir
         localDirHash = DirHash(sourceDir, None, sourceDir)
         localDirHash.printIndented()
         errorDiff = CompareDirectories.ErrorDiff()
@@ -737,15 +737,15 @@ class IncrementalBackups:
         if not os.path.exists(restoreDir):
             os.makedirs(restoreDir)
         if not os.path.isdir(restoreDir):
-            raise "Restore target %s is not a directory" % restoreDir
+            raise "Restore target %r is not a directory" % restoreDir
         if not overwrite and len(os.listdir(restoreDir)) > 0:
-            raise "Restore target %s is not empty" % restoreDir
+            raise "Restore target %r is not empty" % restoreDir
         pathSummaryListToRestore, hashContentKeyMap, backupToRestore = self.getRestoreDetails(dateTimeString)
         if not allowIncomplete and not backupToRestore.completed:
             raise "Backup dated %s is not complete and allowIncomplete is set to false" % backupToRestore.datetime
         self.restoreDirectory (restoreDir, pathSummaryListToRestore, hashContentKeyMap, 
                                overwrite, updateVerificationRecords)
-        print "Restored data to %s" % restoreDir
+        print "Restored data to %r" % restoreDir
         
 def listBackups(backupMap):
     """List all backups in a backup map"""
@@ -767,7 +767,7 @@ def doBackup(sourceDirectory, backupMap, testRestoreDir = None, full = False, ve
     print ""
     if verify and testRestoreDir == None:
         raise "Must supply testRestoreDir argument if verify option is chosen"
-    print "Backing up %s ..." % sourceDirectory
+    print "Backing up %r ..." % sourceDirectory
     backups = IncrementalBackups(backupMap, recordTrigger)
     srcDirInfo = DirectoryInfo(sourceDirectory)
     if doTheBackup:
