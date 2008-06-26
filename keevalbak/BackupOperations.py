@@ -449,7 +449,7 @@ class ContentKey(object):
 class BackupRecordUpdater:
     """Object responsible for recording current state of backup in progress"""
     def __init__(self, backups, backupRecords, currentBackupRecord, backupKeyBase, 
-                 directoryInfo, recordTrigger = 100000):
+                 directoryInfo, recordTrigger = 1000000):
         self.backups = backups
         self.backupRecords = backupRecords
         self.currentBackupRecord = currentBackupRecord
@@ -480,8 +480,9 @@ class IncrementalBackups:
     """A set of dated full or incremental backups within a given backup map.
     This object does _not_ (currently) record _where_ the file contents came from.
     """
-    def __init__(self, backupMap):
+    def __init__(self, backupMap, recordTrigger = 10000000):
         self.backupMap = backupMap
+        self.recordTrigger = recordTrigger
         
     def getDateTimeString(self):
         """Get a date time string to use for a new dated backup"""
@@ -579,7 +580,7 @@ class IncrementalBackups:
         currentBackupRecord = BackupRecord(full and "full" or "incremental", dateTimeString, completed = False)
         backupRecords.append(currentBackupRecord)
         backupRecordUpdater = BackupRecordUpdater (self, backupRecords, currentBackupRecord, 
-                                                   backupKeyBase, directoryInfo)
+                                                   backupKeyBase, directoryInfo, recordTrigger = self.recordTrigger)
         backupRecordUpdater.record()
         writtenRecords = WrittenRecords()
         if not full:
@@ -755,7 +756,7 @@ def pruneBackups(backupMap, keep = 1, dryRun = True):
     IncrementalBackups(backupMap).pruneBackups(keep = keep, dryRun = dryRun)
 
 def doBackup(sourceDirectory, backupMap, testRestoreDir = None, full = False, verify = False, 
-             doTheBackup = True, verifyIncrementally = False):
+             doTheBackup = True, verifyIncrementally = False, recordTrigger = 10000000):
     """Do a backup from source directory to backup map, with options 'full' (or incremental)
     and 'verify' (in which case a test restore is done to the test restore directory).
     Also, if 'doTheBackup' is set to false, only do the test restore and verify.
@@ -767,7 +768,7 @@ def doBackup(sourceDirectory, backupMap, testRestoreDir = None, full = False, ve
     if verify and testRestoreDir == None:
         raise "Must supply testRestoreDir argument if verify option is chosen"
     print "Backing up %s ..." % sourceDirectory
-    backups = IncrementalBackups(backupMap)
+    backups = IncrementalBackups(backupMap, recordTrigger)
     srcDirInfo = DirectoryInfo(sourceDirectory)
     if doTheBackup:
         backups.doBackup (srcDirInfo, full = full)

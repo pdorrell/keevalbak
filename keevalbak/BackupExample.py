@@ -42,7 +42,8 @@ def backup(backupName, full, verify, verifyIncrementally = False):
     backupDetails = localenv.backups.backups[backupName]
     backupMap = getBackupMap(backupName)
     BackupOperations.doBackup (backupDetails.source, backupMap, testRestoreDir, full = full, 
-                               verify = verify, verifyIncrementally = verifyIncrementally)
+                               verify = verify, verifyIncrementally = verifyIncrementally, 
+                               recordTrigger = localenv.backups.recordTrigger)
     
 def listBackups(backupName):
     """List all backups in the named backup"""
