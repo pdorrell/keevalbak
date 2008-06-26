@@ -22,6 +22,11 @@ from boto.s3.connection import S3Connection
 from boto.s3.bucketlistresultset import BucketListResultSet
 from boto.s3.key import Key
 
+def utf8Encoded(string):
+    return unicode(string).encode('utf-8')
+
+def utf8Decoded(bytes):
+    return bytes.decode('utf-8')
 
 class BaseS3BucketMap(object):
     def __init__(self, s3Connection, bucketName, prefix = ""):
@@ -31,7 +36,7 @@ class BaseS3BucketMap(object):
         self.prefix = prefix
         
     def bucketKey(self, key):
-        return unicode(self.prefix + key).encode('utf-8')
+        return utf8Encoded(self.prefix + key)
         
     def subMap(self, prefix):
         return BaseS3BucketMap(self.s3Connection, self.bucketName, self.prefix + prefix)
@@ -58,10 +63,11 @@ class BaseS3BucketMap(object):
         self.bucket.delete_key(self.bucketKey(key))
 
     def __iter__(self):
-        for s3Key in BucketListResultSet(self.bucket, prefix = self.prefix):
+        utf8Prefix = utf8Encoded (self.prefix)
+        for s3Key in BucketListResultSet(self.bucket, prefix = utf8Prefix):
             s3KeyString = str(s3Key.key)
-            if s3KeyString.startswith(self.prefix): # probably this check is unnecessary
-                yield s3KeyString[len(self.prefix):]
+            if s3KeyString.startswith(utf8Prefix): # probably this check is unnecessary
+                yield utf8Decoded(s3KeyString)[len(self.prefix):]
 
     def __repr__(self):
         return "<S3BucketMap, bucket:%s, prefix = \"%s\">" % (self.bucketName, self.prefix)

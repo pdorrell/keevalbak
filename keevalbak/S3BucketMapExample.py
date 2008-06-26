@@ -68,7 +68,7 @@ def main():
     print "testValue = %r" % bucketMap["testValue"]
 
     for key in bucketMap:
-        print "key = %s" % key
+        print "key = %r" % key
 
     testContains(bucketMap, "jim")
     testContains(bucketMap, "testValue")
