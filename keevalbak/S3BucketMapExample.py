@@ -56,6 +56,11 @@ def main():
     bucketMap["testValue"] = "fred2"
     bucketMap["testValue2"] = "jim"
     
+    print "(unicode) testValue = %r" % bucketMap[u"testValue"]
+    
+    bucketMap[u"comoEst\u00e1s"] = "bien gracias"
+    print "como estas value = %r" % bucketMap[u"comoEst\u00e1s"]
+    
     bucketMap[reallyLongKey] = "really long key value"
     
     print "bucketMap[reallyLongKey] (key-length %d bytes) = %r" % (len(reallyLongKey), bucketMap[reallyLongKey])

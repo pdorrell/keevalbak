@@ -60,9 +60,6 @@ class PathSummary(object):
         """Return the full path given the path of the base directory"""
         return basePath + self.relativePath
 
-    def __repr__(self):
-        return self.__str__()
-    
     @staticmethod
     def fromYamlData(data):
         """Convert YAML data into FileSummary or DirSummary (inverse of toYamlData methods)"""
@@ -84,8 +81,8 @@ class FileSummary(PathSummary):
         self.hash = hash
         self.written = written
         
-    def __str__(self):
-        return "FILE: %s : %s%s" % (self.relativePath, self.hash, self.written and " W" or "")
+    def __unicode__(self):
+        return u"FILE: %s : %s%s" % (self.relativePath, self.hash, self.written and " W" or "")
         
     def toYamlData(self):
         """Convert to YAML"""
@@ -107,8 +104,8 @@ class DirSummary(PathSummary):
         self.isDir = True
         self.isFile = False
         
-    def __str__(self):
-        return "DIR:  %s" % (self.relativePath)
+    def __unicode__(self):
+        return u"DIR:  %s" % (self.relativePath)
         
     def toYamlData(self):
         """Convert to YAML"""
@@ -130,9 +127,9 @@ class DirectoryInfo:
     """
     def __init__(self, path):
         """Construct from path base directory"""
-        self.path = path
+        self.path = unicode(path)
         self.pathSummaries = []
-        self.summarizeSubDir("")
+        self.summarizeSubDir(u"")
         
     def createDirSummary(self, relativePath):
         """Create a path summary for a sub-directory"""
@@ -147,7 +144,7 @@ class DirectoryInfo:
     
     def addSummary(self, pathSummary):
         """Add a path summary"""
-        print pathSummary
+        print u"%r" % pathSummary
         self.pathSummaries.append (pathSummary)
         
     def getPathSummariesYamlData(self):
@@ -157,9 +154,12 @@ class DirectoryInfo:
     def summarizeSubDir(self, relativePath):
         """Recursively summarize a sub-directory specified by it's relative path, 
         adding the path summaries for all contained files and sub-directories to the list of path summaries."""
+        print "summarizeSubDir, relativePath = %r" % relativePath
         for childName in os.listdir(self.path + relativePath):
+            print "   childName = %r" % childName
             childRelativePath = relativePath + "/" + childName;
             childPath = self.path + childRelativePath
+            print "  childRelativePath = %r" % childRelativePath
             if os.path.isfile(childPath):
                 self.addSummary(self.createFileSummary(childRelativePath))
             elif os.path.isdir(childPath):
@@ -216,7 +216,7 @@ class HashVerificationRecords(object):
             fileHashesRecordFilename = datetime + "/verifiedFileHashes.yaml"
             print "Updating verification records for %s = %s" % (datetime, 
                                                                  self.datetimeFileHashesMap[datetime])
-            self.backupMap[fileHashesRecordFilename] = yaml.dump (self.datetimeFileHashesMap[datetime])
+            self.backupMap[fileHashesRecordFilename] = yaml.safe_dump (self.datetimeFileHashesMap[datetime])
             
 class BackupRecord:
     """A record of a backup made: it's date/time, and whether it was full or incremental."""
@@ -253,7 +253,7 @@ class WrittenRecords:
         
     def recordHashWritten(self, hash, key):
         """Record that a contents with a particular hash were written to a particular key"""
-        print " record hash %s written to %s" % (hash, key)
+        print " record hash %s written to %r" % (hash, key)
         self.written[hash] = key
         
     def isWritten(self, hash):
@@ -441,7 +441,7 @@ class ContentKey(object):
         return self.datetime + "/files" + self.filePath
     
     def __str__(self):
-        return "[%s:%s]" % (self.datetime, self.filePath)
+        return "[%s:%r]" % (self.datetime, self.filePath)
     
     def __repr__(self):
         return self.__str__()
@@ -498,7 +498,7 @@ class IncrementalBackups:
     
     def saveBackupRecords(self, backupRecords):
         backupRecordsYamlData = [record.toYamlData() for record in backupRecords]
-        self.backupMap["backupRecords"] = yaml.dump(backupRecordsYamlData)
+        self.backupMap["backupRecords"] = yaml.safe_dump(backupRecordsYamlData)
         print "new backup records = %r" % backupRecords
     
     def getBackupGroups(self):
@@ -561,7 +561,7 @@ class IncrementalBackups:
                 self.saveBackupRecords(remainingRecords)
                 
     def recordPathSummaries(self, backupKeyBase, directoryInfo):
-        self.backupMap[backupKeyBase + "/pathList"] = yaml.dump(directoryInfo.getPathSummariesYamlData())
+        self.backupMap[backupKeyBase + "/pathList"] = yaml.safe_dump(directoryInfo.getPathSummariesYamlData())
         
     def doBackup(self, directoryInfo, full = True):
         """Create a new backup of a source directory (full or incremental).
@@ -595,7 +595,7 @@ class IncrementalBackups:
                 if not writtenRecords.isWritten(pathSummary.hash):
                     content = readFileBytes(fileName)
                     fileContentKey = backupFilesKeyBase + pathSummary.relativePath
-                    print "Writing %s ..." % fileContentKey
+                    print "Writing %r ..." % fileContentKey
                     pathSummary.written = True
                     self.backupMap[fileContentKey] = content
                     writtenRecords.recordHashWritten (pathSummary.hash, fileContentKey)
@@ -671,7 +671,7 @@ class IncrementalBackups:
                 writeFileBytes(fullPath, content)
                 if updateVerificationRecords:
                     verificationRecords.markVerified (contentKey.datetime, contentKey.filePath, content)
-                print "Restored FILE %s" % fullPath
+                print "Restored FILE %r" % fullPath
             else:
                 print "WARNING: Unknown path type %r" % pathSummary
         if updateVerificationRecords:

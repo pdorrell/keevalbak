@@ -30,21 +30,24 @@ class BaseS3BucketMap(object):
         self.bucketName = bucketName
         self.prefix = prefix
         
+    def bucketKey(self, key):
+        return unicode(self.prefix + key).encode('utf-8')
+        
     def subMap(self, prefix):
         return BaseS3BucketMap(self.s3Connection, self.bucketName, self.prefix + prefix)
         
     def __getitem__(self, key):
-        valueKey = self.bucket.lookup(self.prefix + key)
+        valueKey = self.bucket.lookup(self.bucketKey(key))
         if valueKey is None: 
-            raise KeyError("%s" % key)
+            raise KeyError(u"%s" % key)
         return valueKey.get_contents_as_string()
     
     def __contains__(self, key):
-        return self.bucket.lookup(self.prefix + key) is not None
+        return self.bucket.lookup(self.bucketKey(key)) is not None
     
     def __setitem__(self, key, value):
         valueKey = Key(self.bucket)
-        valueKey.key = self.prefix + key
+        valueKey.name = self.bucketKey(key)
         if not isinstance(value, str):
             raise TypeError('Cannot store non-string value')
         valueKey.set_contents_from_string(value)
@@ -52,7 +55,7 @@ class BaseS3BucketMap(object):
     def __delitem__(self, key):
         # this does not return any KeyError if the key doesn't exist
         # (and it would cost more to check, so it doesn't check)
-        self.bucket.delete_key(self.prefix + key)
+        self.bucket.delete_key(self.bucketKey(key))
 
     def __iter__(self):
         for s3Key in BucketListResultSet(self.bucket, prefix = self.prefix):

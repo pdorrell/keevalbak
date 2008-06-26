@@ -24,8 +24,8 @@ class DirectoryComparator:
     def __init__(self, base1, base2, log, logDiff):
         """An intention to compare all files within two base directories, 
         with specified logger (for progress messages) and difference logger"""
-        self.base1 = base1
-        self.base2 = base2
+        self.base1 = unicode(base1)
+        self.base2 = unicode(base2)
         self.log = log
         self.logDiff = logDiff
 
@@ -92,7 +92,7 @@ class DirectoryComparator:
             
 def printLog(indent, message):
     """Simple implementation for progress logger"""
-    print ("  " * indent) + message
+    print "%s%r" % ("  " * indent, message)
     
 class ErrorDiff:
     """Logger for comparison differences"""
