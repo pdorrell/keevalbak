@@ -601,7 +601,7 @@ class IncrementalBackups:
                     writtenRecords.recordHashWritten (pathSummary.hash, fileContentKey)
                     backupRecordUpdater.recordContentWrittenSize (len(content))
                 else:
-                    print "Content of %r already written to %s" % (pathSummary, 
+                    print "Content of %r already written to %r" % (pathSummary, 
                                                                    writtenRecords.locationWritten (pathSummary.hash))
         backupRecordUpdater.recordCompleted()
         
