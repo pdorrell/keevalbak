@@ -419,7 +419,7 @@ class DirHash(BaseDirHash):
     based on actual contents of actual directory in actual file-system base directory"""
     def __init__(self, dir, name, description):
         super(DirHash, self).__init__(name, description)
-        fullPath = name and (dir + "/" + name) or dir
+        fullPath = unicode (name and (dir + "/" + name) or dir)
         print "Creating DirHash for %r" % fullPath
         for childName in os.listdir(fullPath):
             childPath = fullPath + "/" + childName
