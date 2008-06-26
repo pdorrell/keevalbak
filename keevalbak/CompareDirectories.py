@@ -109,9 +109,9 @@ class ErrorDiff:
         print "Errors = %r" % self.errors
         numErrors = len(self.errors)
         if numErrors > 0:
-            raise "%d differences found between %s and %s: %s" % (numErrors, 
-                                                                  dir1, dir2, 
-                                                                  ", ".join(self.errors))
+            raise Exception ("%d differences found between %s and %s: %s" % (numErrors, 
+                                                                             dir1, dir2, 
+                                                                             ", ".join(self.errors)))
 
 def verifyIdentical(dir1, dir2):
     """Verify two directories have identical sub-directories and file contents.
