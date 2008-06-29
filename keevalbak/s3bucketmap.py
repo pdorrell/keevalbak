@@ -87,5 +87,15 @@ class S3BucketMap(BaseS3BucketMap):
     
     def __init__(self, accessKey, secretAccessKey, bucketName, prefix = "", secure = True):
         """Initialize using standard S3 bucket details and optional prefix"""
+        self.accessKey = accessKey
+        self.secretAccessKey = secretAccessKey
+        self.bucketName = bucketName
+        self.prefix = prefix
+        self.secure = secure
         s3Connection = S3Connection(accessKey, secretAccessKey, secure)
         super(S3BucketMap, self).__init__(s3Connection, bucketName, prefix)
+        
+    def clone(self):
+        return S3BucketMap(accessKey = self.accessKey, secretAccessKey = self.secretAccessKey, 
+                           bucketName = self.bucketName, prefix = self.prefix, 
+                           secure = self.secure)
