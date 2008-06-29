@@ -460,8 +460,11 @@ class BackupRecordUpdater:
         self.unrecordedBytes = 0
         self.recordTrigger = recordTrigger
         
-    def record(self):
+    def checkpoint(self):
         self.backups.recordPathSummaries (self.backupKeyBase, self.directoryInfo)
+        
+    def record(self):
+        self.checkpoint()
         self.backups.saveBackupRecords(self.backupRecords)
         
     def recordContentWrittenSize(self, contentWrittenSize):
@@ -470,7 +473,7 @@ class BackupRecordUpdater:
         self.unrecordedBytes += contentWrittenSize
         if self.unrecordedBytes >= self.recordTrigger:
             print " unrecordedBytes = %d, recording backup state ..." % self.unrecordedBytes
-            self.backups.recordPathSummaries (self.backupKeyBase, self.directoryInfo)
+            self.checkpoint()
             self.unrecordedBytes = 0
         
     def recordCompleted(self):
@@ -479,6 +482,9 @@ class BackupRecordUpdater:
         
 class TaskRunner:
     """Simple task runner: runs both parts of tasks synchronously"""
+    def __init__(self, checkpointFreq = None):
+        self.checkpointFreq = checkpointFreq
+        
     def runTasks(self, tasks, checkpointTask = None):
         for task in tasks:
             task.doUnsynchronized()
@@ -589,7 +595,7 @@ class IncrementalBackups:
             
         def doSynchronized(self):
             self.writtenRecords.recordHashWritten (self.pathSummary.hash, self.fileContentKey)
-        
+            
     def doBackup(self, directoryInfo, full = True):
         """Create a new backup of a source directory (full or incremental).
         Note: 'incremental' is based on comparing the hashes of file contents already marked as
@@ -627,7 +633,7 @@ class IncrementalBackups:
                 else:
                     print "Content of %r already written to %r" % (pathSummary, 
                                                                    writtenRecords.locationWritten (pathSummary.hash))
-        TaskRunner().runTasks (backupFileTasks)
+        TaskRunner(checkpointFreq = 20).runTasks (backupFileTasks, checkpointTask = backupRecordUpdater)
         backupRecordUpdater.recordCompleted()
         
     def doFullBackup(self, directoryInfo):
