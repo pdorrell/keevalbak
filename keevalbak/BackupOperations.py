@@ -40,16 +40,9 @@ def writeFileBytes(filename, bytes):
     f = file(filename, "wb")
     f.write(bytes)
     f.close()
-
-def deleteMapValues(map, dryRun):
-    """Delete all keys from a map, or if dryRun is True, do a dry run"""
-    print "%sDeleting keys from map %s" % (dryRun and "DRYRUN: " or "", map)
-    for key in map:
-        print " delete %r ..." % key
-        if not dryRun:
-            del map[key]
-    print "finished."
     
+    
+
 class PathSummary(object):
     """Information about a file or directory specified as a relative path within some base directory
     Note: all paths are '/' separated, whether or not we are in Microsoft Windows"""
@@ -495,8 +488,33 @@ class TaskRunner:
 
 from ThreadedTaskRunner import ThreadedTaskRunner
 
-taskRunner = ThreadedTaskRunner (numThreads = 20, clonedAttributes = ["backupMap"])
+taskRunner = ThreadedTaskRunner (numThreads = 30, clonedAttributes = ["backupMap"])
+
+class DeleteBackupMapValueTask:
+    def __init__(self, backupMap, key):
+        self.backupMap = backupMap
+        self.key = key
         
+    def doUnsynchronized(self):
+        print " delete %r ..." % self.key
+        del self.backupMap[self.key]
+        
+    def doSynchronized(self):
+        pass
+        
+def deleteMapValues(backupMap, dryRun):
+    """Delete all keys from a map, or if dryRun is True, do a dry run"""
+    print "%sDeleting keys from map %s" % (dryRun and "DRYRUN: " or "", backupMap)
+    deleteTasks = []
+    for key in backupMap:
+        if dryRun:
+            print " delete %r ..." % key
+        else:
+            deleteTasks.append (DeleteBackupMapValueTask(backupMap, key))
+    if not dryRun:
+        taskRunner.runTasks (deleteTasks)
+    print "finished."
+    
 class IncrementalBackups:
     """A set of dated full or incremental backups within a given backup map.
     This object does _not_ (currently) record _where_ the file contents came from.
@@ -834,7 +852,9 @@ def doBackup(sourceDirectory, backupMap, testRestoreDir = None, full = False, ve
     if doTheBackup:
         backups.doBackup (srcDirInfo, full = full)
         backupFinishedTime = datetime.datetime.now()
-        backupFinishedMessage = "Backup finished %s (started %s)" % (backupFinishedTime, startTime)
+        backupTimeTaken = backupFinishedTime - startTime
+        backupFinishedMessage = "Backup finished %s (started %s, took %s)" % (backupFinishedTime, 
+                                                                              startTime, backupTimeTaken)
         print ""
         print backupFinishedMessage
     restoreStartTime = datetime.datetime.now()
@@ -853,4 +873,5 @@ def doBackup(sourceDirectory, backupMap, testRestoreDir = None, full = False, ve
         print ""
         if doTheBackup:
             print backupFinishedMessage
-        print "Verify finished %s (started %s)" % (verifyFinishedTime, restoreStartTime)
+        restoreTimeTaken = verifyFinishedTime - restoreStartTime
+        print "Verify finished %s (started %s, took %s)" % (verifyFinishedTime, restoreStartTime, restoreTimeTaken)
