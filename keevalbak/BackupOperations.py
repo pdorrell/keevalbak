@@ -160,12 +160,9 @@ class DirectoryInfo:
     def summarizeSubDir(self, relativePath):
         """Recursively summarize a sub-directory specified by it's relative path, 
         adding the path summaries for all contained files and sub-directories to the list of path summaries."""
-        print "summarizeSubDir, relativePath = %r" % relativePath
         for childName in os.listdir(self.path + relativePath):
-            print "   childName = %r" % childName
             childRelativePath = relativePath + "/" + childName;
             childPath = self.path + childRelativePath
-            print "  childRelativePath = %r" % childRelativePath
             if os.path.isfile(childPath):
                 self.addSummary(self.createFileSummary(childRelativePath))
             elif os.path.isdir(childPath):
@@ -425,7 +422,6 @@ class DirHash(BaseDirHash):
     def __init__(self, dir, name, description):
         super(DirHash, self).__init__(name, description)
         fullPath = unicode (name and (dir + "/" + name) or dir)
-        print "Creating DirHash for %r" % fullPath
         for childName in os.listdir(fullPath):
             childPath = fullPath + "/" + childName
             if os.path.isfile(childPath):
@@ -691,6 +687,7 @@ class IncrementalBackups:
         print "Get restore records for %s" % (dateTimeString or "(most recent backup)")
         restoreRecords = self.getRestoreRecords(backupRecords, dateTimeString)
         print "restoreRecords = %r" % restoreRecords
+        # todo needs more logging up to next print
         pathSummaryDataLists = [self.getPathSummaryDataList(record) for record in restoreRecords]
         pathSummaryLists = [[PathSummary.fromYamlData(pathSummaryData) for pathSummaryData in pathSummaryDataList] 
                             for pathSummaryDataList in pathSummaryDataLists]
