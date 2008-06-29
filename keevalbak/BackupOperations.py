@@ -84,6 +84,9 @@ class FileSummary(PathSummary):
     def __unicode__(self):
         return u"FILE: %r : %s%s" % (self.relativePath, self.hash, self.written and " W" or "")
         
+    def __repr__(self):
+        return self.__unicode__()
+    
     def toYamlData(self):
         """Convert to YAML"""
         return {"type": "file", 
@@ -112,6 +115,9 @@ class DirSummary(PathSummary):
         return {"type": "dir", 
                 "path": self.relativePath
                 }
+    
+    def __repr__(self):
+        return self.__unicode__()
     
     @staticmethod
     def fromYamlData(data):
