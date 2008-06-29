@@ -636,6 +636,7 @@ class IncrementalBackups:
         in a specified dated backup"""
         dateTimeString = backupRecord.datetime
         backupKeyBase = dateTimeString
+        print "getPathSummaryDataList for %r ..." % backupRecord
         pathSummariesData = yaml.safe_load(self.backupMap[backupKeyBase + "/pathList"])
         return pathSummariesData
     
@@ -687,15 +688,15 @@ class IncrementalBackups:
         print "Get restore records for %s" % (dateTimeString or "(most recent backup)")
         restoreRecords = self.getRestoreRecords(backupRecords, dateTimeString)
         print "restoreRecords = %r" % restoreRecords
-        # todo needs more logging up to next print
         pathSummaryDataLists = [self.getPathSummaryDataList(record) for record in restoreRecords]
+        print "parsing pathSummaryLists from YAML data ..."
         pathSummaryLists = [[PathSummary.fromYamlData(pathSummaryData) for pathSummaryData in pathSummaryDataList] 
                             for pathSummaryDataList in pathSummaryDataLists]
+        print "calculating hashContentKeyMap ..."
         hashContentKeyMap = self.getHashContentKeyMap(restoreRecords, pathSummaryLists)
         print "hashContentKeyMap = %r" % hashContentKeyMap
         backupToRestore = restoreRecords[-1]
         print "Target backup for restore: %r" % backupToRestore
-        print "pathSummaryLists = %r" % pathSummaryLists
         pathSummaryListToRestore = pathSummaryLists[-1]
         return pathSummaryListToRestore, hashContentKeyMap, backupToRestore
     
