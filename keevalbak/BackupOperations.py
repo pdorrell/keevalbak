@@ -479,7 +479,7 @@ class BackupRecordUpdater:
         
 class TaskRunner:
     """Simple task runner: runs both parts of tasks synchronously"""
-    def runTasks(self, tasks):
+    def runTasks(self, tasks, checkpointTask = None):
         for task in tasks:
             task.doUnsynchronized()
         for task in tasks:
@@ -572,6 +572,24 @@ class IncrementalBackups:
     def recordPathSummaries(self, backupKeyBase, directoryInfo):
         self.backupMap[backupKeyBase + "/pathList"] = yaml.safe_dump(directoryInfo.getPathSummariesYamlData())
         
+    class BackupFileTask:
+        def __init__(self, backupMap, backupFilesKeyBase, pathSummary, fileName, writtenRecords):
+            self.backupMap = backupMap
+            self.backupFilesKeyBase = backupFilesKeyBase
+            self.pathSummary = pathSummary
+            self.fileName = fileName
+            self.writtenRecords = writtenRecords
+            
+        def doUnsynchronized(self):
+            content = readFileBytes(self.fileName)
+            self.fileContentKey = self.backupFilesKeyBase + self.pathSummary.relativePath
+            print "Writing %r ..." % self.fileContentKey
+            self.pathSummary.written = True
+            self.backupMap[self.fileContentKey] = content
+            
+        def doSynchronized(self):
+            self.writtenRecords.recordHashWritten (self.pathSummary.hash, self.fileContentKey)
+        
     def doBackup(self, directoryInfo, full = True):
         """Create a new backup of a source directory (full or incremental).
         Note: 'incremental' is based on comparing the hashes of file contents already marked as
@@ -598,20 +616,18 @@ class IncrementalBackups:
                 print "No previous records, so backup will be FULL anyway"
             else:
                 writtenRecords.recordPreviousBackups (self.backupMap, backupRecords)
+        backupFileTasks = []
         for pathSummary in directoryInfo.pathSummaries:
             if not pathSummary.isDir:
                 fileName = pathSummary.fullPath(directoryInfo.path)
                 if not writtenRecords.isWritten(pathSummary.hash):
-                    content = readFileBytes(fileName)
-                    fileContentKey = backupFilesKeyBase + pathSummary.relativePath
-                    print "Writing %r ..." % fileContentKey
-                    pathSummary.written = True
-                    self.backupMap[fileContentKey] = content
-                    writtenRecords.recordHashWritten (pathSummary.hash, fileContentKey)
-                    backupRecordUpdater.recordContentWrittenSize (len(content))
+                    backupFileTask = IncrementalBackups.BackupFileTask(self.backupMap, backupFilesKeyBase, 
+                                                                       pathSummary, fileName, writtenRecords)
+                    backupFileTasks.append (backupFileTask)
                 else:
                     print "Content of %r already written to %r" % (pathSummary, 
                                                                    writtenRecords.locationWritten (pathSummary.hash))
+        TaskRunner().runTasks (backupFileTasks)
         backupRecordUpdater.recordCompleted()
         
     def doFullBackup(self, directoryInfo):
