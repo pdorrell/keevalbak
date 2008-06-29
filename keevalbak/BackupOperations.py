@@ -191,12 +191,10 @@ class HashVerificationRecords(object):
             self.datetimeFileHashesMap[datetime] = fileHashesMap
         return fileHashesMap
         
-    def markVerified(self, datetime, filePath, content):
+    def markVerified(self, datetime, filePath, contentHash):
         fileHashesMap = self.getFileHashesMap(datetime)
-        fileHash = sha1Digest(content)
-        fileHashesMap[filePath] = fileHash
+        fileHashesMap[filePath] = contentHash
         self.datetimeUpdated.add (datetime)
-        return fileHash
         
     def getWrittenFileHash(self, datetime, filePath):
         """Get the hash of a backed up file, either from an existing hash verification record, 
@@ -206,8 +204,9 @@ class HashVerificationRecords(object):
             return fileHashesMap[filePath]
         else:
             content = self.backupMap[datetime + "/files" + filePath]
-            fileHash = self.markVerified(datetime, filePath, content)
-            return fileHash
+            contentHash = sha1Digest(content)
+            self.markVerified(datetime, filePath, contentHash)
+            return contentHash
         
     def updateRecords(self):
         """Update any newly verified hashes back into the backup map."""
@@ -670,7 +669,8 @@ class IncrementalBackups:
                     os.remove (fullPath)
                 writeFileBytes(fullPath, content)
                 if updateVerificationRecords:
-                    verificationRecords.markVerified (contentKey.datetime, contentKey.filePath, content)
+                    contentHash = sha1Digest(content)
+                    verificationRecords.markVerified (contentKey.datetime, contentKey.filePath, contentHash)
                 print "Restored FILE %r" % fullPath
             else:
                 print "WARNING: Unknown path type %r" % pathSummary
