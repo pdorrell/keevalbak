@@ -99,3 +99,8 @@ class S3BucketMap(BaseS3BucketMap):
         return S3BucketMap(accessKey = self.accessKey, secretAccessKey = self.secretAccessKey, 
                            bucketName = self.bucketName, prefix = self.prefix, 
                            secure = self.secure)
+
+    def subMap(self, prefix):
+        return S3BucketMap(accessKey = self.accessKey, secretAccessKey = self.secretAccessKey, 
+                           bucketName = self.bucketName, prefix = self.prefix + prefix, 
+                           secure = self.secure)
