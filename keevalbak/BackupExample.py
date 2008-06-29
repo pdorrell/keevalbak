@@ -70,4 +70,4 @@ if __name__ == '__main__':
     fullBackup("test", verify = True)
     #fullBackup("test", verify = False)
     #listBackups("test")
-    #pruneBackups("test", keep = 2, dryRun = True)
+    #pruneBackups("test", keep = 2, dryRun = False)
