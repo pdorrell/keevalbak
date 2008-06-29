@@ -490,6 +490,12 @@ class TaskRunner:
             task.doUnsynchronized()
         for task in tasks:
             task.doSynchronized()
+            
+#taskRunner = TaskRunner(checkpointFreq = 20)
+
+from ThreadedTaskRunner import ThreadedTaskRunner
+
+taskRunner = ThreadedTaskRunner (numThreads = 10, clonedAttributes = ["backupMap"])
         
 class IncrementalBackups:
     """A set of dated full or incremental backups within a given backup map.
@@ -633,7 +639,7 @@ class IncrementalBackups:
                 else:
                     print "Content of %r already written to %r" % (pathSummary, 
                                                                    writtenRecords.locationWritten (pathSummary.hash))
-        TaskRunner(checkpointFreq = 20).runTasks (backupFileTasks, checkpointTask = backupRecordUpdater)
+        taskRunner.runTasks (backupFileTasks, checkpointTask = backupRecordUpdater)
         backupRecordUpdater.recordCompleted()
         
     def doFullBackup(self, directoryInfo):
@@ -727,7 +733,7 @@ class IncrementalBackups:
                                                                              verificationRecords, overwrite))
             else:
                 print "WARNING: Unknown path type %r" % pathSummary
-        TaskRunner().runTasks (restoreFileTasks)
+        taskRunner.runTasks (restoreFileTasks)
         if updateVerificationRecords:
             verificationRecords.updateRecords()
             
