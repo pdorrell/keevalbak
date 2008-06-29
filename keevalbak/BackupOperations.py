@@ -650,6 +650,30 @@ class IncrementalBackups:
                     hashContentKeyMap[pathSummary.hash] = ContentKey(restoreRecord.datetime, pathSummary.relativePath)
         return hashContentKeyMap
     
+    class RestoreFileTask:
+        def __init__(self, backupMap, contentKey, fullPath, updateVerificationRecords, verificationRecords, overwrite):
+            self.backupMap = backupMap
+            self.contentKey = contentKey
+            self.fullPath = fullPath
+            self.updateVerificationRecords = updateVerificationRecords
+            self.verificationRecords = verificationRecords
+            self.overwrite = overwrite
+            
+        def doUnsynchronized(self):
+            content = self.backupMap[self.contentKey.fileKey()]
+            if os.path.exists(self.fullPath) and self.overwrite:
+                os.remove (self.fullPath)
+            writeFileBytes(self.fullPath, content)
+            if self.updateVerificationRecords:
+                self.contentHash = sha1Digest(content)
+            print "Restored FILE %r" % self.fullPath
+                    
+        def doSynchronized(self):
+            if self.updateVerificationRecords:
+                self.verificationRecords.markVerified (self.contentKey.datetime, 
+                                                       self.contentKey.filePath, self.contentHash)
+                print "Mark verified FILE %r" % self.fullPath
+    
     def restoreDirectory(self, restoreDir, pathSummaryList, hashContentKeyMap, overwrite, 
                          updateVerificationRecords = False):
         """Restore a directory using path summaries and hash content key map, with optional overwrite"""
@@ -667,14 +691,11 @@ class IncrementalBackups:
                     print "WARNING: No written content found for %r (hash %s)" % (pathSummary.relativePath, 
                                                                                   pathSummary.hash)
                 contentKey = hashContentKeyMap[pathSummary.hash]
-                content = self.backupMap[contentKey.fileKey()]
-                if os.path.exists(fullPath) and overwrite:
-                    os.remove (fullPath)
-                writeFileBytes(fullPath, content)
-                if updateVerificationRecords:
-                    contentHash = sha1Digest(content)
-                    verificationRecords.markVerified (contentKey.datetime, contentKey.filePath, contentHash)
-                print "Restored FILE %r" % fullPath
+                restoreFileTask = IncrementalBackups.RestoreFileTask (self.backupMap, contentKey, 
+                                                                      fullPath, updateVerificationRecords, 
+                                                                      verificationRecords, overwrite)
+                restoreFileTask.doUnsynchronized()
+                restoreFileTask.doSynchronized()
             else:
                 print "WARNING: Unknown path type %r" % pathSummary
         if updateVerificationRecords:
