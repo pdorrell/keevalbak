@@ -495,7 +495,7 @@ class TaskRunner:
 
 from ThreadedTaskRunner import ThreadedTaskRunner
 
-taskRunner = ThreadedTaskRunner (numThreads = 10, clonedAttributes = ["backupMap"])
+taskRunner = ThreadedTaskRunner (numThreads = 20, clonedAttributes = ["backupMap"])
         
 class IncrementalBackups:
     """A set of dated full or incremental backups within a given backup map.
