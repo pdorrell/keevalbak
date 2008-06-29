@@ -680,6 +680,7 @@ class IncrementalBackups:
         print "Restoring directory %r ..." % restoreDir
         if updateVerificationRecords:
             verificationRecords = HashVerificationRecords(self.backupMap)
+        restoreFileTasks = []
         for pathSummary in pathSummaryList:
             fullPath = pathSummary.fullPath (restoreDir)
             if pathSummary.isDir:
@@ -691,13 +692,15 @@ class IncrementalBackups:
                     print "WARNING: No written content found for %r (hash %s)" % (pathSummary.relativePath, 
                                                                                   pathSummary.hash)
                 contentKey = hashContentKeyMap[pathSummary.hash]
-                restoreFileTask = IncrementalBackups.RestoreFileTask (self.backupMap, contentKey, 
-                                                                      fullPath, updateVerificationRecords, 
-                                                                      verificationRecords, overwrite)
-                restoreFileTask.doUnsynchronized()
-                restoreFileTask.doSynchronized()
+                restoreFileTasks.append (IncrementalBackups.RestoreFileTask (self.backupMap, contentKey, 
+                                                                             fullPath, updateVerificationRecords, 
+                                                                             verificationRecords, overwrite))
             else:
                 print "WARNING: Unknown path type %r" % pathSummary
+        for restoreFileTask in restoreFileTasks:
+            restoreFileTask.doUnsynchronized()
+        for restoreFileTask in restoreFileTasks:
+            restoreFileTask.doSynchronized()
         if updateVerificationRecords:
             verificationRecords.updateRecords()
             
