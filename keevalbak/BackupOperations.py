@@ -477,6 +477,14 @@ class BackupRecordUpdater:
         self.currentBackupRecord.completed = True
         self.record()
         
+class TaskRunner:
+    """Simple task runner: runs both parts of tasks synchronously"""
+    def runTasks(self, tasks):
+        for task in tasks:
+            task.doUnsynchronized()
+        for task in tasks:
+            task.doSynchronized()
+        
 class IncrementalBackups:
     """A set of dated full or incremental backups within a given backup map.
     This object does _not_ (currently) record _where_ the file contents came from.
@@ -697,10 +705,7 @@ class IncrementalBackups:
                                                                              verificationRecords, overwrite))
             else:
                 print "WARNING: Unknown path type %r" % pathSummary
-        for restoreFileTask in restoreFileTasks:
-            restoreFileTask.doUnsynchronized()
-        for restoreFileTask in restoreFileTasks:
-            restoreFileTask.doSynchronized()
+        TaskRunner().runTasks (restoreFileTasks)
         if updateVerificationRecords:
             verificationRecords.updateRecords()
             
