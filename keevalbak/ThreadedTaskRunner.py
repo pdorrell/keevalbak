@@ -21,6 +21,36 @@
 import Queue
 import threading
 
+class TaskRunner(object):
+    """Simple task runner: runs both parts of tasks synchronously"""
+    def __init__(self, checkpointFreq = None):
+        self.checkpointFreq = checkpointFreq
+        
+    def runTasksInit(self):
+        pass
+    
+    def doUnsynchronizedTasks(self, tasks):
+        for task in tasks:
+            task.doUnsynchronized()
+        
+    def runTasks(self, tasks, checkpointTask = None):
+        self.runTasksInit()
+        startIndex = 0
+        numTasks = len(tasks)
+        while startIndex < numTasks:
+            if self.checkpointFreq == None or checkpointTask == None:
+                endIndex = numTasks
+            else:
+                endIndex = min(startIndex+self.checkpointFreq, numTasks)
+            self.doUnsynchronizedTasks (tasks[startIndex:endIndex])
+            for i in range(startIndex, endIndex):
+                tasks[i].doSynchronized()
+            if endIndex < numTasks:
+                print "CHECKPOINT:"
+                if checkpointTask != None:
+                    checkpointTask.checkpoint()
+            startIndex = endIndex
+            
 class TaskProcessor(threading.Thread):
     def __init__(self, queue, index):
         threading.Thread.__init__(self)
@@ -40,19 +70,20 @@ class TaskProcessor(threading.Thread):
             self.queue.task_done()
             #print "Thread %d finished performing task ..." % self.index
             
-class ThreadedTaskRunner:
-    def __init__(self, numThreads = 10):
+class ThreadedTaskRunner(TaskRunner):
+    def __init__(self, checkpointFreq = 10, numThreads = 10):
+        super(ThreadedTaskRunner, self).__init__(checkpointFreq)
         self.queue = Queue.Queue()
         self.processors = [TaskProcessor(self.queue, i) for i in range(numThreads)]
         for processor in self.processors:
             processor.setDaemon(True)
             processor.start()
-                
-    def runTasks(self, tasks, checkpointTask = None):
+            
+    def runTasksInit(self):
         for processor in self.processors:
             processor.threadLocals = None
+                
+    def doUnsynchronizedTasks(self, tasks):
         for task in tasks:
             self.queue.put (task)
         self.queue.join()
-        for task in tasks:
-            task.doSynchronized()

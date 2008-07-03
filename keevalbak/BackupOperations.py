@@ -473,34 +473,11 @@ class BackupRecordUpdater:
         self.currentBackupRecord.completed = True
         self.record()
         
-class TaskRunner:
-    """Simple task runner: runs both parts of tasks synchronously"""
-    def __init__(self, checkpointFreq = None):
-        self.checkpointFreq = checkpointFreq
-        
-    def runTasks(self, tasks, checkpointTask = None):
-        startIndex = 0
-        numTasks = len(tasks)
-        while startIndex < numTasks:
-            if self.checkpointFreq == None or checkpointTask == None:
-                endIndex = numTasks
-            else:
-                endIndex = min(startIndex+self.checkpointFreq, numTasks)
-            for i in range(startIndex, endIndex):
-                tasks[i].doUnsynchronized()
-            for i in range(startIndex, endIndex):
-                tasks[i].doSynchronized()
-            if endIndex < numTasks:
-                print "CHECKPOINT:"
-                if checkpointTask != None:
-                    checkpointTask.checkpoint()
-            startIndex = endIndex
-            
-taskRunner = TaskRunner(checkpointFreq = 10)
+from ThreadedTaskRunner import ThreadedTaskRunner, TaskRunner
 
-from ThreadedTaskRunner import ThreadedTaskRunner
+#taskRunner = TaskRunner(checkpointFreq = 10)
 
-#taskRunner = ThreadedTaskRunner (numThreads = 30)
+taskRunner = ThreadedTaskRunner (checkpointFreq =  30, numThreads = 10)
 
 class DeleteBackupMapValueTask:
     def __init__(self, backupMap, key):
