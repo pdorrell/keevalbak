@@ -479,7 +479,6 @@ class TaskRunner:
         self.checkpointFreq = checkpointFreq
         
     def runTasks(self, tasks, checkpointTask = None):
-        uncheckpointedCount = 0
         startIndex = 0
         numTasks = len(tasks)
         while startIndex < numTasks:
