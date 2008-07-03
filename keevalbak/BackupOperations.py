@@ -479,16 +479,29 @@ class TaskRunner:
         self.checkpointFreq = checkpointFreq
         
     def runTasks(self, tasks, checkpointTask = None):
-        for task in tasks:
-            task.doUnsynchronized()
-        for task in tasks:
-            task.doSynchronized()
+        uncheckpointedCount = 0
+        startIndex = 0
+        numTasks = len(tasks)
+        while startIndex < numTasks:
+            if self.checkpointFreq == None or checkpointTask == None:
+                endIndex = numTasks
+            else:
+                endIndex = min(startIndex+self.checkpointFreq, numTasks)
+            for i in range(startIndex, endIndex):
+                tasks[i].doUnsynchronized()
+            for i in range(startIndex, endIndex):
+                tasks[i].doSynchronized()
+            if endIndex < numTasks:
+                print "CHECKPOINT:"
+                if checkpointTask != None:
+                    checkpointTask.checkpoint()
+            startIndex = endIndex
             
-#taskRunner = TaskRunner(checkpointFreq = 20)
+taskRunner = TaskRunner(checkpointFreq = 10)
 
 from ThreadedTaskRunner import ThreadedTaskRunner
 
-taskRunner = ThreadedTaskRunner (numThreads = 30)
+#taskRunner = ThreadedTaskRunner (numThreads = 30)
 
 class DeleteBackupMapValueTask:
     def __init__(self, backupMap, key):
@@ -603,7 +616,9 @@ class IncrementalBackups:
                 self.saveBackupRecords(remainingRecords)
                 
     def recordPathSummaries(self, backupKeyBase, directoryInfo):
-        self.backupMap[backupKeyBase + "/pathList"] = yaml.safe_dump(directoryInfo.getPathSummariesYamlData())
+        pathListKey = backupKeyBase + "/pathList"
+        print "Record path summaries to %s ..." % pathListKey
+        self.backupMap[pathListKey] = yaml.safe_dump(directoryInfo.getPathSummariesYamlData())
         
     class BackupFileTask:
         def __init__(self, backupMap, backupFilesKeyBase, pathSummary, fileName, writtenRecords):
