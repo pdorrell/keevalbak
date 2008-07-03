@@ -488,12 +488,15 @@ class TaskRunner:
 
 from ThreadedTaskRunner import ThreadedTaskRunner
 
-taskRunner = ThreadedTaskRunner (numThreads = 30, clonedAttributes = ["backupMap"])
+taskRunner = ThreadedTaskRunner (numThreads = 30)
 
 class DeleteBackupMapValueTask:
     def __init__(self, backupMap, key):
         self.backupMap = backupMap
         self.key = key
+        
+    def getThreadLocals(self):
+        return {"backupMap": self.backupMap.clone()}
         
     def doUnsynchronized(self):
         print " delete %r ..." % self.key
@@ -610,6 +613,9 @@ class IncrementalBackups:
             self.fileName = fileName
             self.writtenRecords = writtenRecords
             
+        def getThreadLocals(self):
+            return {"backupMap": self.backupMap.clone()}
+        
         def doUnsynchronized(self):
             content = readFileBytes(self.fileName)
             self.fileContentKey = self.backupFilesKeyBase + self.pathSummary.relativePath
@@ -713,6 +719,9 @@ class IncrementalBackups:
             self.verificationRecords = verificationRecords
             self.overwrite = overwrite
             
+        def getThreadLocals(self):
+            return {"backupMap": self.backupMap.clone()}
+        
         def doUnsynchronized(self):
             content = self.backupMap[self.contentKey.fileKey()]
             if os.path.exists(self.fullPath) and self.overwrite:
