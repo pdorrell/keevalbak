@@ -36,13 +36,14 @@ def getBackupMap(backupName):
     return S3BucketMap(localenv.s3.accessKey, localenv.s3.secretAccessKey, 
                        localenv.backups.backupBucket, prefix = backupPrefix)
 
-def backup(backupName, full, verify, verifyIncrementally = False):
+def backup(backupName, full, verify, verifyIncrementally = False, doTheBackup = True):
     """Do the named backup, with options for full (or incremental) and verify"""
     testRestoreDir = localenv.backups.testRestoreDir
     backupDetails = localenv.backups.backups[backupName]
     backupMap = getBackupMap(backupName)
     BackupOperations.doBackup (backupDetails.source, backupMap, testRestoreDir, full = full, 
                                verify = verify, verifyIncrementally = verifyIncrementally, 
+                               doTheBackup = doTheBackup, 
                                recordTrigger = localenv.backups.recordTrigger)
     
 def listBackups(backupName):
