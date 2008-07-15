@@ -150,6 +150,11 @@ class DirectoryInfo:
         """Return array of path summaries as YAML data"""
         return [summary.toYamlData() for summary in self.pathSummaries]
     
+    def getWrittenPathSummariesYamlData(self):
+        """Return array of path summaries for written files as YAML data"""
+        return [summary.toYamlData() for summary in self.pathSummaries if summary.written]
+    
+    
     def summarizeSubDir(self, relativePath):
         """Recursively summarize a sub-directory specified by it's relative path, 
         adding the path summaries for all contained files and sub-directories to the list of path summaries."""
@@ -261,7 +266,7 @@ class WrittenRecords:
     
     def recordBackup(self, backupMap, backupRecord):
         """For every file contents in a backup record recorded as written, record it's
-        hash value and backup map key in the written records."""
+        hash value and backup map key in the written records.""" # todo: slow
         directoryInfoYamlData = yaml.safe_load (backupMap[backupRecord.datetime + "/pathList"])
         for pathData in directoryInfoYamlData:
             #print "Recording backup data %s/%r" % (backupRecord.datetime, pathData)
@@ -453,21 +458,16 @@ class BackupRecordUpdater:
         self.unrecordedBytes = 0
         self.recordTrigger = recordTrigger
         
-    def checkpoint(self):
+    def fullCheckpoint(self):
         self.backups.recordPathSummaries (self.backupKeyBase, self.directoryInfo)
+        self.backups.recordWrittenPathSummaries (self.backupKeyBase, self.directoryInfo)
+        
+    def checkpoint(self):
+        self.backups.recordWrittenPathSummaries (self.backupKeyBase, self.directoryInfo)
         
     def record(self):
-        self.checkpoint()
+        self.fullCheckpoint()
         self.backups.saveBackupRecords(self.backupRecords)
-        
-    def recordContentWrittenSize(self, contentWrittenSize):
-        self.bytesWritten += contentWrittenSize
-        print " wrote %d bytes, total now %d ..." % (contentWrittenSize, self.bytesWritten)
-        self.unrecordedBytes += contentWrittenSize
-        if self.unrecordedBytes >= self.recordTrigger:
-            print " unrecordedBytes = %d, recording backup state ..." % self.unrecordedBytes
-            self.checkpoint()
-            self.unrecordedBytes = 0
         
     def recordCompleted(self):
         self.currentBackupRecord.completed = True
@@ -475,9 +475,9 @@ class BackupRecordUpdater:
         
 from ThreadedTaskRunner import ThreadedTaskRunner, TaskRunner
 
-#taskRunner = TaskRunner(checkpointFreq = 10)
+#taskRunner = TaskRunner(checkpointFreq = 30)
 
-taskRunner = ThreadedTaskRunner (checkpointFreq =  30, numThreads = 10)
+taskRunner = ThreadedTaskRunner (checkpointFreq =  100, numThreads = 10)
 
 class DeleteBackupMapValueTask:
     def __init__(self, backupMap, key):
@@ -595,6 +595,11 @@ class IncrementalBackups:
         pathListKey = backupKeyBase + "/pathList"
         print "Record path summaries to %s ..." % pathListKey
         self.backupMap[pathListKey] = yaml.safe_dump(directoryInfo.getPathSummariesYamlData())
+
+    def recordWrittenPathSummaries(self, backupKeyBase, directoryInfo):
+        writtenPathListKey = backupKeyBase + "/writtenPathList"
+        print "Record written path summaries to %s ..." % writtenPathListKey
+        self.backupMap[writtenPathListKey] = yaml.safe_dump(directoryInfo.getWrittenPathSummariesYamlData())
         
     class BackupFileTask:
         def __init__(self, backupMap, backupFilesKeyBase, pathSummary, fileName, writtenRecords):
@@ -684,7 +689,7 @@ class IncrementalBackups:
     
     def getPathSummaryDataList(self, backupRecord):
         """Get YAML data representing information about files and directories backed up
-        in a specified dated backup"""
+        in a specified dated backup"""  # todo: slow
         dateTimeString = backupRecord.datetime
         backupKeyBase = dateTimeString
         print "getPathSummaryDataList for %r ..." % backupRecord
