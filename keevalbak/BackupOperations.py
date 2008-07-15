@@ -801,7 +801,8 @@ class IncrementalBackups:
         print "hashContentKeyMap = %r" % hashContentKeyMap
         backupToRestore = restoreRecords[-1]
         print "Target backup for restore: %r" % backupToRestore
-        pathSummaryListToRestore = PathSummary.fromYamlData (self.getPathSummaryDataList(backupToRestore))
+        pathSummaryListToRestore = [PathSummary.fromYamlData (pathSummaryData) for pathSummaryData 
+                                    in self.getPathSummaryDataList(backupToRestore)]
         return pathSummaryListToRestore, hashContentKeyMap, backupToRestore
     
     def getRestoredDirHash(self, dateTimeString = None):
