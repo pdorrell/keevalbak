@@ -486,7 +486,7 @@ from ThreadedTaskRunner import ThreadedTaskRunner, TaskRunner
 
 #taskRunner = TaskRunner(checkpointFreq = 30)
 
-taskRunner = ThreadedTaskRunner (checkpointFreq =  100, numThreads = 10)
+taskRunner = ThreadedTaskRunner (checkpointFreq =  500, numThreads = 30)
 
 class DeleteBackupMapValueTask:
     def __init__(self, backupMap, key):
