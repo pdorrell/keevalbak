@@ -55,9 +55,9 @@ def incrementalBackup(backupName, verify, verifyIncrementally = False):
     """Do an incremental backup"""
     backup(backupName, full = False, verify = verify, verifyIncrementally = verifyIncrementally)
     
-def fullBackup(backupName, verify):
+def fullBackup(backupName, verify, doTheBackup = True):
     """Do a full backup"""
-    backup(backupName, full = True, verify = verify, verifyIncrementally = False)
+    backup(backupName, full = True, verify = verify, verifyIncrementally = False, doTheBackup = doTheBackup)
     
 def pruneBackups(backupName, keep = 1, dryRun = True):
     """Prune backups from a named backup"""
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     # comment or uncomment lines here according to taste
     #incrementalBackup("test", verify = True, verifyIncrementally = True)
     #incrementalBackup("test", verify = True)
-    fullBackup("test", verify = True)
+    fullBackup("test", doTheBackup = False, verify = True)
     #fullBackup("test", verify = False)
     #listBackups("test")
     #pruneBackups("test", keep = 2, dryRun = False)
