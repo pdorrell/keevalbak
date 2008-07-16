@@ -720,7 +720,7 @@ class IncrementalBackups:
         print "getWrittenPathSummaryDataList for %r ..." % backupRecord
         writtenPathListKey = backupKeyBase + "/writtenPathList"
         if writtenPathListKey in self.backupMap:
-            writtenPathSummariesData = yaml.safe_load(self.backupMap[backupKeyBase + "/pathList"])
+            writtenPathSummariesData = yaml.safe_load(self.backupMap[backupKeyBase + "/writtenPathList"])
             print " loaded."
             return writtenPathSummariesData
         else:
