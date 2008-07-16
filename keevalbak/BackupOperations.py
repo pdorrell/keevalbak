@@ -467,20 +467,27 @@ class BackupRecordUpdater:
         self.unrecordedBytes = 0
         self.recordTrigger = recordTrigger
         
-    def fullCheckpoint(self):
+    def recordPathSummaries(self):
         self.backups.recordPathSummaries (self.backupKeyBase, self.directoryInfo)
+        
+    def recordWrittenPathSummaries(self):
         self.backups.recordWrittenPathSummaries (self.backupKeyBase, self.directoryInfo)
+        
+    def saveBackupRecords(self):
+        self.backups.saveBackupRecords(self.backupRecords)
         
     def checkpoint(self):
-        self.backups.recordWrittenPathSummaries (self.backupKeyBase, self.directoryInfo)
+        self.recordWrittenPathSummaries()
         
-    def record(self):
-        self.fullCheckpoint()
-        self.backups.saveBackupRecords(self.backupRecords)
+    def initialRecord(self):
+        self.recordPathSummaries()
+        self.recordWrittenPathSummaries()
+        self.saveBackupRecords()
         
     def recordCompleted(self):
         self.currentBackupRecord.completed = True
-        self.record()
+        self.recordWrittenPathSummaries()
+        self.saveBackupRecords()
         
 from ThreadedTaskRunner import ThreadedTaskRunner, TaskRunner
 
@@ -649,7 +656,7 @@ class IncrementalBackups:
         backupRecords.append(currentBackupRecord)
         backupRecordUpdater = BackupRecordUpdater (self, backupRecords, currentBackupRecord, 
                                                    backupKeyBase, directoryInfo, recordTrigger = self.recordTrigger)
-        backupRecordUpdater.record()
+        backupRecordUpdater.initialRecord()
         writtenRecords = WrittenRecords()
         if not full:
             if len(backupRecords) == 0:
