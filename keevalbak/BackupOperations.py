@@ -117,10 +117,6 @@ class DirSummary(PathSummary):
         """Create from YAML (inverse of toYamlData)"""
         return DirSummary(data["path"])
     
-def selectWrittenSummariesFrom (pathSummaryDataList):
-    return [pathSummaryData for pathSummaryData in pathSummaryDataList 
-            if pathSummaryData["type"] == "file" and pathSummaryData["written"]]
-    
 def sha1Digest(content):
     return hashlib.sha1(content).hexdigest()
 
@@ -272,11 +268,7 @@ class WrittenRecords:
         """For every file contents in a backup record recorded as written, record it's
         hash value and backup map key in the written records.""" # todo: slow
         writtenPathListKey = backupRecord.datetime + "/writtenPathList"
-        if writtenPathListKey in backupMap:
-            pathListKey = writtenPathListKey
-        else:
-            pathListKey = backupRecord.datetime + "/pathList"
-        directoryInfoYamlData = yaml.safe_load (backupMap[pathListKey])
+        directoryInfoYamlData = yaml.safe_load (backupMap[writtenPathListKey])
         for pathData in directoryInfoYamlData:
             #print "Recording backup data %s/%r" % (backupRecord.datetime, pathData)
             if pathData["type"] == "file" and pathData["written"]:
@@ -719,13 +711,9 @@ class IncrementalBackups:
         backupKeyBase = dateTimeString
         print "getWrittenPathSummaryDataList for %r ..." % backupRecord
         writtenPathListKey = backupKeyBase + "/writtenPathList"
-        if writtenPathListKey in self.backupMap:
-            writtenPathSummariesData = yaml.safe_load(self.backupMap[backupKeyBase + "/writtenPathList"])
-            print " loaded."
-            return writtenPathSummariesData
-        else:
-            print " writtenPathList not found ..."
-            return selectWrittenSummariesFrom (self.getPathSummaryDataList (backupRecord));
+        writtenPathSummariesData = yaml.safe_load(self.backupMap[backupKeyBase + "/writtenPathList"])
+        print " loaded."
+        return writtenPathSummariesData
         
     def getHashContentKeyMap(self, restoreRecords, pathSummaryLists):
         """Construct a map from hash keys to the backup keys to which those file contents
