@@ -850,6 +850,7 @@ class IncrementalBackups:
                 overwrite = False, updateVerificationRecords = False, allowIncomplete = False):
         """Restore the specified (or otherwise the most recent) backup to a 
         destination directory (with optional overwrite)"""
+        print u"Restoring to %s ..." % restoreDir
         if not os.path.exists(restoreDir):
             os.makedirs(restoreDir)
         if not os.path.isdir(restoreDir):
@@ -903,6 +904,7 @@ def doBackup(sourceDirectory, backupMap, testRestoreDir = None, full = False, ve
             backups.incrementalVerify (sourceDirectory)
         else:
             print "   fully ..."
+            print u"   removing existing files from %s ..." % testRestoreDir
             shutil.rmtree(testRestoreDir)
             backups.restore(testRestoreDir, overwrite = False, updateVerificationRecords = True)
             CompareDirectories.verifyIdentical(testRestoreDir, srcDirInfo.path)
