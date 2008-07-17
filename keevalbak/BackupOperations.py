@@ -67,15 +67,14 @@ class PathSummary(object):
 class FileSummary(PathSummary):
     """Information about a file specified as a relative path within some (unspecified) base directory, 
     including a SHA1 hash of the file's contents."""
-    def __init__(self, relativePath, hash, written = False):
+    def __init__(self, relativePath, hash):
         super(FileSummary, self).__init__(relativePath)
         self.isDir = False
         self.isFile = True
         self.hash = hash
-        self.written = written
         
     def __unicode__(self):
-        return u"FILE: %r : %s%s" % (self.relativePath, self.hash, self.written and " W" or "")
+        return u"FILE: %r : %s" % (self.relativePath, self.hash)
         
     def __repr__(self):
         return self.__unicode__()
@@ -84,14 +83,12 @@ class FileSummary(PathSummary):
         """Convert to YAML"""
         return {"type": "file", 
                 "path": self.relativePath, 
-                "hash": self.hash, 
-                "written": self.written
-                }
+                "hash": self.hash }
     
     @staticmethod
     def fromYamlData(data):
         """Create from YAML (inverse of toYamlData)"""
-        return FileSummary(data["path"], data["hash"], written = data["written"])
+        return FileSummary(data["path"], data["hash"])
 
 class DirSummary(PathSummary):
     """Information about a file specified as a relative path within some (unspecified) base directory"""
@@ -149,11 +146,6 @@ class DirectoryInfo:
     def getPathSummariesYamlData(self):
         """Return array of path summaries as YAML data"""
         return [summary.toYamlData() for summary in self.pathSummaries]
-    
-    def getWrittenPathSummariesYamlData(self):
-        """Return array of path summaries for written files as YAML data"""
-        return [summary.toYamlData() for summary in self.pathSummaries if summary.isFile and summary.written]
-    
     
     def summarizeSubDir(self, relativePath):
         """Recursively summarize a sub-directory specified by it's relative path, 
@@ -463,23 +455,23 @@ class BackupRecordUpdater:
     def recordPathSummaries(self):
         self.backups.recordPathSummaries (self.backupKeyBase, self.directoryInfo)
         
-    def recordWrittenPathSummaries(self):
-        self.backups.recordWrittenPathSummaries (self.backupKeyBase, self.writtenFileSummaries)
+    def recordWrittenFileSummaries(self):
+        self.backups.recordWrittenFileSummaries (self.backupKeyBase, self.writtenFileSummaries)
         
     def saveBackupRecords(self):
         self.backups.saveBackupRecords(self.backupRecords)
         
     def checkpoint(self):
-        self.recordWrittenPathSummaries()
+        self.recordWrittenFileSummaries()
         
     def initialRecord(self):
         self.recordPathSummaries()
-        self.recordWrittenPathSummaries()
+        self.recordWrittenFileSummaries()
         self.saveBackupRecords()
         
     def recordCompleted(self):
         self.currentBackupRecord.completed = True
-        self.recordWrittenPathSummaries()
+        self.recordWrittenFileSummaries()
         self.saveBackupRecords()
         
 from ThreadedTaskRunner import ThreadedTaskRunner, TaskRunner
@@ -605,11 +597,11 @@ class IncrementalBackups:
         print "Record path summaries to %s ..." % pathListKey
         self.backupMap[pathListKey] = yaml.safe_dump(directoryInfo.getPathSummariesYamlData())
 
-    def recordWrittenPathSummaries(self, backupKeyBase, writtenFileSummaries):
+    def recordWrittenFileSummaries(self, backupKeyBase, writtenFileSummaries):
         writtenPathListKey = backupKeyBase + "/writtenPathList"
-        print "Record written path summaries to %s ..." % writtenPathListKey
-        writtenPathSummariesYamlData = [summary.toYamlData() for summary in writtenFileSummaries]
-        self.backupMap[writtenPathListKey] = yaml.safe_dump(writtenPathSummariesYamlData)
+        print "Record written file summaries to %s ..." % writtenPathListKey
+        writtenFileSummariesYamlData = [summary.toYamlData() for summary in writtenFileSummaries]
+        self.backupMap[writtenPathListKey] = yaml.safe_dump(writtenFileSummariesYamlData)
         
     class BackupFileTask:
         def __init__(self, backupMap, backupFilesKeyBase, pathSummary, fileName, writtenRecords, 
@@ -628,7 +620,6 @@ class IncrementalBackups:
             content = readFileBytes(self.fileName)
             self.fileContentKey = self.backupFilesKeyBase + self.pathSummary.relativePath
             print "Writing %r ..." % self.fileContentKey
-            self.pathSummary.written = True
             self.backupMap[self.fileContentKey] = content
             
         def doSynchronized(self):
@@ -710,25 +701,25 @@ class IncrementalBackups:
         pathSummariesData = yaml.safe_load(self.backupMap[backupKeyBase + "/pathList"])
         return pathSummariesData
     
-    def getWrittenPathSummaryDataList(self, backupRecord):
+    def getWrittenFileSummaryDataList(self, backupRecord):
         """Get YAML data representing information about files and directories backed up
         in a specified dated backup"""
         dateTimeString = backupRecord.datetime
         backupKeyBase = dateTimeString
-        print "getWrittenPathSummaryDataList for %r ..." % backupRecord
+        print "getWrittenFileSummaryDataList for %r ..." % backupRecord
         writtenPathListKey = backupKeyBase + "/writtenPathList"
-        writtenPathSummariesData = yaml.safe_load(self.backupMap[backupKeyBase + "/writtenPathList"])
+        writtenFileSummariesData = yaml.safe_load(self.backupMap[backupKeyBase + "/writtenPathList"])
         print " loaded."
-        return writtenPathSummariesData
+        return writtenFileSummariesData
         
-    def getHashContentKeyMap(self, restoreRecords, pathSummaryLists):
+    def getHashContentKeyMap(self, restoreRecords, writtenFileSummaryLists):
         """Construct a map from hash keys to the backup keys to which those file contents
         were written (within the given backup group which is being restored from)"""
         hashContentKeyMap = {}
-        for restoreRecord, pathSummaryList in zip(restoreRecords, pathSummaryLists):
-            for pathSummary in pathSummaryList:
-                if pathSummary.isFile and pathSummary.written:
-                    hashContentKeyMap[pathSummary.hash] = ContentKey(restoreRecord.datetime, pathSummary.relativePath)
+        for restoreRecord, writtenFileSummaryList in zip(restoreRecords, writtenFileSummaryLists):
+            for writtenFileSummary in writtenFileSummaryList:
+                hashContentKeyMap[writtenFileSummary.hash] = ContentKey(restoreRecord.datetime, 
+                                                                        writtenFileSummary.relativePath)
         return hashContentKeyMap
     
     class RestoreFileTask:
@@ -793,12 +784,12 @@ class IncrementalBackups:
         print "Get restore records for %s" % (dateTimeString or "(most recent backup)")
         restoreRecords = self.getRestoreRecords(backupRecords, dateTimeString)
         print "restoreRecords = %r" % restoreRecords
-        writtenPathSummaryDataLists = [self.getWrittenPathSummaryDataList(record) for record in restoreRecords]
-        print "parsing writtenPathSummaryDataLists from YAML data ..."
-        writtenPathSummaryLists = [[PathSummary.fromYamlData(pathSummaryData) for pathSummaryData in pathSummaryDataList] 
-                                   for pathSummaryDataList in writtenPathSummaryDataLists]
+        writtenFileSummaryDataLists = [self.getWrittenFileSummaryDataList(record) for record in restoreRecords]
+        print "parsing writtenFileSummaryDataLists from YAML data ..."
+        writtenFileSummaryLists = [[PathSummary.fromYamlData(pathSummaryData) for pathSummaryData in pathSummaryDataList] 
+                                   for pathSummaryDataList in writtenFileSummaryDataLists]
         print "calculating hashContentKeyMap ..."
-        hashContentKeyMap = self.getHashContentKeyMap(restoreRecords, writtenPathSummaryLists)
+        hashContentKeyMap = self.getHashContentKeyMap(restoreRecords, writtenFileSummaryLists)
         print "hashContentKeyMap = %r" % hashContentKeyMap
         backupToRestore = restoreRecords[-1]
         print "Target backup for restore: %r" % backupToRestore
