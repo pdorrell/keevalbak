@@ -458,12 +458,13 @@ class BackupRecordUpdater:
         self.bytesWritten = 0
         self.unrecordedBytes = 0
         self.recordTrigger = recordTrigger
+        self.writtenFileSummaries = []
         
     def recordPathSummaries(self):
         self.backups.recordPathSummaries (self.backupKeyBase, self.directoryInfo)
         
     def recordWrittenPathSummaries(self):
-        self.backups.recordWrittenPathSummaries (self.backupKeyBase, self.directoryInfo)
+        self.backups.recordWrittenPathSummaries (self.backupKeyBase, self.writtenFileSummaries)
         
     def saveBackupRecords(self):
         self.backups.saveBackupRecords(self.backupRecords)
@@ -604,18 +605,21 @@ class IncrementalBackups:
         print "Record path summaries to %s ..." % pathListKey
         self.backupMap[pathListKey] = yaml.safe_dump(directoryInfo.getPathSummariesYamlData())
 
-    def recordWrittenPathSummaries(self, backupKeyBase, directoryInfo):
+    def recordWrittenPathSummaries(self, backupKeyBase, writtenFileSummaries):
         writtenPathListKey = backupKeyBase + "/writtenPathList"
         print "Record written path summaries to %s ..." % writtenPathListKey
-        self.backupMap[writtenPathListKey] = yaml.safe_dump(directoryInfo.getWrittenPathSummariesYamlData())
+        writtenPathSummariesYamlData = [summary.toYamlData() for summary in writtenFileSummaries]
+        self.backupMap[writtenPathListKey] = yaml.safe_dump(writtenPathSummariesYamlData)
         
     class BackupFileTask:
-        def __init__(self, backupMap, backupFilesKeyBase, pathSummary, fileName, writtenRecords):
+        def __init__(self, backupMap, backupFilesKeyBase, pathSummary, fileName, writtenRecords, 
+                     writtenFileSummaries):
             self.backupMap = backupMap
             self.backupFilesKeyBase = backupFilesKeyBase
             self.pathSummary = pathSummary
             self.fileName = fileName
             self.writtenRecords = writtenRecords
+            self.writtenFileSummaries = writtenFileSummaries
             
         def getThreadLocals(self):
             return {"backupMap": self.backupMap.clone()}
@@ -628,6 +632,7 @@ class IncrementalBackups:
             self.backupMap[self.fileContentKey] = content
             
         def doSynchronized(self):
+            self.writtenFileSummaries.append (self.pathSummary)
             self.writtenRecords.recordHashWritten (self.pathSummary.hash, self.fileContentKey)
             
     def doBackup(self, directoryInfo, full = True):
@@ -662,7 +667,8 @@ class IncrementalBackups:
                 fileName = pathSummary.fullPath(directoryInfo.path)
                 if not writtenRecords.isWritten(pathSummary.hash):
                     backupFileTask = IncrementalBackups.BackupFileTask(self.backupMap, backupFilesKeyBase, 
-                                                                       pathSummary, fileName, writtenRecords)
+                                                                       pathSummary, fileName, writtenRecords, 
+                                                                       backupRecordUpdater.writtenFileSummaries)
                     backupFileTasks.append (backupFileTask)
                 else:
                     print "Content of %r already written to %r" % (pathSummary, 
