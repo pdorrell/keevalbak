@@ -41,7 +41,7 @@ def writeFileBytes(filename, bytes):
     f.write(bytes)
     f.close()
     
-    
+BackupsVersion = 2
 
 class PathSummary(object):
     """Information about a file or directory specified as a relative path within some base directory
@@ -237,6 +237,24 @@ class BackupRecord:
     def __repr__(self):
         return self.__str__()
     
+class InvalidBackupsVersion(Exception):
+    def __init__(self, backupRecord, version):
+        Exception.__init__(self, "Invalid backup for backup record %s version %d (this version = %d)" % 
+                           (backupRecord, version, BackupsVersion))
+        self.version = version
+    
+def getBackupsVersion(backupMap, backupRecord):
+    versionKey = backupRecord.datetime + "/version"
+    if versionKey in backupMap:
+        return int(backupMap[versionKey])
+    else:
+        return 1
+        
+def checkVersion(backupMap, backupRecord):
+    version = getBackupsVersion (backupMap, backupRecord)
+    if version != BackupsVersion:
+        raise InvalidBackupsVersion (backupRecord, version)
+    
 class WrittenRecords:
     """Records of where file contents with a given SHA1 hash value was written to in backup map
     (within the context of a particular set of backups, i.e. a full and following incrementals)"""
@@ -259,6 +277,7 @@ class WrittenRecords:
     def recordBackup(self, backupMap, backupRecord):
         """For every file contents in a backup record recorded as written, record it's
         hash value and backup map key in the written records.""" # todo: slow
+        checkVersion(backupMap, backupRecord)
         writtenPathListKey = backupRecord.datetime + "/writtenPathList"
         writtenFileSummariesYamlData = yaml.safe_load (backupMap[writtenPathListKey])
         for fileData in writtenFileSummariesYamlData:
@@ -451,6 +470,9 @@ class BackupRecordUpdater:
         self.recordTrigger = recordTrigger
         self.writtenFileSummaries = []
         
+    def recordVersion(self):
+        self.backups.backupMap[self.backupKeyBase + "/version"] = str(BackupsVersion)
+        
     def recordPathSummaries(self):
         self.backups.recordPathSummaries (self.backupKeyBase, self.directoryInfo)
         
@@ -464,6 +486,7 @@ class BackupRecordUpdater:
         self.recordWrittenFileSummaries()
         
     def initialRecord(self):
+        self.recordVersion()
         self.recordPathSummaries()
         self.recordWrittenFileSummaries()
         self.saveBackupRecords()
@@ -782,6 +805,8 @@ class IncrementalBackups:
         print "Get restore records for %s" % (dateTimeString or "(most recent backup)")
         restoreRecords = self.getRestoreRecords(backupRecords, dateTimeString)
         print "restoreRecords = %r" % restoreRecords
+        for restoreRecord in restoreRecords:
+            checkVersion(self.backupMap, restoreRecord)
         writtenFileSummaryDataLists = [self.getWrittenFileSummaryDataList(record) for record in restoreRecords]
         print "parsing writtenFileSummaryDataLists from YAML data ..."
         writtenFileSummaryLists = [[PathSummary.fromYamlData(pathSummaryData) for pathSummaryData in pathSummaryDataList] 
