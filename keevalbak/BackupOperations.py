@@ -260,11 +260,10 @@ class WrittenRecords:
         """For every file contents in a backup record recorded as written, record it's
         hash value and backup map key in the written records.""" # todo: slow
         writtenPathListKey = backupRecord.datetime + "/writtenPathList"
-        directoryInfoYamlData = yaml.safe_load (backupMap[writtenPathListKey])
-        for pathData in directoryInfoYamlData:
+        writtenFileSummariesYamlData = yaml.safe_load (backupMap[writtenPathListKey])
+        for fileData in writtenFileSummariesYamlData:
             #print "Recording backup data %s/%r" % (backupRecord.datetime, pathData)
-            if pathData["type"] == "file" and pathData["written"]:
-                self.recordHashWritten (pathData["hash"], backupRecord.datetime + pathData["path"])
+            self.recordHashWritten (fileData["hash"], backupRecord.datetime + fileData["path"])
     
     def recordPreviousBackups(self, backupMap, backupRecords):
         """Record the hashes of all files written from the last full backup onwards (or from the first
@@ -709,7 +708,6 @@ class IncrementalBackups:
         print "getWrittenFileSummaryDataList for %r ..." % backupRecord
         writtenPathListKey = backupKeyBase + "/writtenPathList"
         writtenFileSummariesData = yaml.safe_load(self.backupMap[backupKeyBase + "/writtenPathList"])
-        print " loaded."
         return writtenFileSummariesData
         
     def getHashContentKeyMap(self, restoreRecords, writtenFileSummaryLists):
