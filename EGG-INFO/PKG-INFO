@@ -6,7 +6,31 @@ Home-page: http://www.1729.com/software/keevalbak/index.html
 Author: Philip Dorrell
 Author-email: http://www.1729.com/email.html
 License: MIT
-Description: Python scripts for full and incremental backups to an S3 bucket
+Description: 
+        Python scripts for full and incremental backups to an S3 bucket
+        
+        "keevalbak" stands for "Key-Value-Backup". keevalbak backs up
+        a directory on a file system to a key-value store, where keys
+        are unicode strings, and values are byte arrays. An implementation
+        of a such a key-value store on Amazon S3 is included. (The limitations
+        of S3 for key-lengths and value sizes apply therefore to the backups.)
+        
+        Each file is matched to a corresponding key-value pair.
+        Additional key-value pairs provide meta-data about 
+            * backups with dates and whether they are full or incremental
+            * directories (including empty directories)
+            * which file contents are written to and which file contents
+              reference other contents previously written.
+            * major version of keevalbak used to create each backup
+        
+        Incremental backups are supported on the basis that files whose
+        exact contents have already been written (since the last full back up)
+        can reference those previously written contents.
+        
+        Version 2 is not backwards compatible with version 1.
+        After upgrading to version 2, new full backups must be performed for
+        all backups. To restore old version 1 backups, use version 1 of the 
+        software.
 Platform: Posix; MacOS X; Windows
 Classifier: Development Status :: 3 - Alpha
 Classifier: Intended Audience :: Developers
