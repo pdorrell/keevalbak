@@ -312,9 +312,9 @@ class BaseFileHash(object):
         
     def compareToOtherFileHash (self, otherFileHash, indent, log, logDiff):
         if self.hash != otherFileHash.hash:
-            self.logDiff ("File %r has hash %s in %r but hash %s in %r" %
-                          self.name, self.hash, self.description, 
-                          otherFileHash.hash, otherFileHash.description)
+            logDiff ("File %r has hash %s in %r but hash %s in %r" %
+                     self.name, self.hash, self.description, 
+                     otherFileHash.hash, otherFileHash.description)
         
 pathRegex = re.compile("[/]([^/]*)([/].*)?")
         
@@ -806,6 +806,7 @@ class IncrementalBackups:
         restoreRecords = self.getRestoreRecords(backupRecords, dateTimeString)
         print "restoreRecords = %r" % restoreRecords
         for restoreRecord in restoreRecords:
+            print "checkVersion for %r ..." % restoreRecord
             checkVersion(self.backupMap, restoreRecord)
         writtenFileSummaryDataLists = [self.getWrittenFileSummaryDataList(record) for record in restoreRecords]
         print "parsing writtenFileSummaryDataLists from YAML data ..."
