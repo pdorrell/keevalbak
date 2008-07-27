@@ -313,8 +313,8 @@ class BaseFileHash(object):
     def compareToOtherFileHash (self, otherFileHash, indent, log, logDiff):
         if self.hash != otherFileHash.hash:
             logDiff ("File %r has hash %s in %r but hash %s in %r" %
-                     self.name, self.hash, self.description, 
-                     otherFileHash.hash, otherFileHash.description)
+                     (self.name, self.hash, self.description, 
+                      otherFileHash.hash, otherFileHash.description))
         
 pathRegex = re.compile("[/]([^/]*)([/].*)?")
         
